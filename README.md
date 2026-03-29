@@ -2,7 +2,7 @@
 
 ## Development
 ### Starting development
-1. Start all services and prepare a dev container (app, money-module, Postgres, TigerBeetle):
+1. Start all services and prepare a dev container:
 ```bash
 docker compose up -d
 ```

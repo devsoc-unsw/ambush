@@ -1,35 +1,35 @@
 services:
   ambush-dev-container:
     container_name: ambush-dev-container
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: ghcr.io/devsoc-unsw/ambush-devcontainer
     stdin_open: true
     tty: true
     ports:
-      - "3067:3067"
+      # expose ports (3000 computer <-> 3000 on the container)
+      - "3000:3000"
     volumes:
-      - ./app:/root/ambush/app
-    working_dir: /root/ambush/app
+      - ../:/root/ambush
     environment:
       - NODE_ENV=development
-      - DATABASE_URL=postgres://postgres:password@postgres:5432/ambush
+      - DATABASE_URL=postgres://postgres:password@ambush-postgres:5432/ambush
     networks:
-      - ambush-network
+      - devsoc-network
     depends_on:
-      postgres:
+      ambush-postgres:
         condition: service_healthy
+    security_opt:
+      - seccomp:unconfined
 
-  postgres:
-    image: postgres:16-alpine
+  ambush-postgres:
+    image: postgres:18-alpine
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: password
       POSTGRES_DB: ambush
     networks:
-      - ambush-network
+      - devsoc-network
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 5s
@@ -40,5 +40,5 @@ volumes:
   postgres_data:
 
 networks:
-  ambush-network:
+  devsoc-network:
     driver: bridge

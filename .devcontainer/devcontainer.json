@@ -1,0 +1,12 @@
+{
+    "name": "AMBUSH Dev Container",
+    "dockerComposeFile": "./docker-compose.yml",
+    "service": "ambush-dev-container",
+    "workspaceFolder": "/root/ambush",
+    "shutdownAction": "stopCompose",
+    "customizations": {
+        "vscode": {
+            "extensions": ["golang.Go"]
+        }
+    }
+}

@@ -8,5 +8,6 @@
         "vscode": {
             "extensions": ["golang.Go"]
         }
-    }
+    },
+    "postCreateCommand": "cd app && bun install"
 }

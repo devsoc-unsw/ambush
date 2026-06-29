@@ -11,6 +11,9 @@ RUN apt-get update && apt-get install -y \
     ripgrep \
     golang \
     && rm -rf /var/lib/apt/lists/*
+
+ENV BUN_INSTALL="/root/.bun"
+ENV PATH="/root/.bun/bun:%${PATH}"
 RUN curl -fsSL https://bun.com/install | bash
 
 # default go tooling

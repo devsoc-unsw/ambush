@@ -1,8 +1,11 @@
 # Ambush
 
+- `frontend/` — Vite + React SPA with TanStack Router (bun)
+- `backend/` — Go HTTP API server
+
 ## Development
 ### Starting development
-1. Start all services and prepare a dev container (app, money-module, Postgres, TigerBeetle):
+1. Start all services and prepare a dev container (dev container, Postgres):
 ```bash
 docker compose up -d
 ```
@@ -23,5 +26,5 @@ exit
 ```bash
 docker compose down
 ```
-use `bun run lint` for lint and `bun run test` in the dev shell for tests.
-tests need to end in the suffix .test.ts.
+In the dev shell: `cd frontend` then `bun run dev` (port 3000), `bun run lint` for lint, and `bun run test` for tests (test files need the suffix `.test.ts`).
+For the backend: `cd backend` then `go run .` (see `backend/db/README.md` for the sqlc/goose/pgx database workflow).

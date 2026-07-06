@@ -9,5 +9,5 @@
             "extensions": ["golang.Go"]
         }
     },
-    "postCreateCommand": "cd app && bun install"
+    "postCreateCommand": "cd frontend && bun install"
 }

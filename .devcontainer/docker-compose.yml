@@ -11,33 +11,85 @@ services:
       - ../:/root/ambush
     environment:
       - NODE_ENV=development
-      - DATABASE_URL=postgres://postgres:password@ambush-postgres:5432/ambush
+      - DATABASE_URL=postgres://postgres:password@ambush-metadata-postgres:5432/meta_ambush
     networks:
       - devsoc-network
     depends_on:
-      ambush-postgres:
+      ambush-metadata-postgres:
         condition: service_healthy
+      spicedb-dev:
+        condition: service_started
     security_opt:
       - seccomp:unconfined
 
-  ambush-postgres:
+  spicedb-dev:
+    image: authzed/spicedb:latest-debug
+    command: serve
+    restart: always
+    environment:
+      - SPICEDB_GRPC_PRESHARED_KEY=secret-dev-key
+      - SPICEDB_DATASTORE_ENGINE=postgres
+      - SPICEDB_DATASTORE_CONN_URI=postgres://postgres:password@ambush-spicedb-postgres:5432/spice_ambush?sslmode=disable
+    networks:
+      - devsoc-network
+    ports:
+      - "50067:50051"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  migrate:
+    image: authzed/spicedb
+    command: datastore migrate head
+    environment:
+      - SPICEDB_DATASTORE_ENGINE=postgres
+      - SPICEDB_DATASTORE_CONN_URI=postgres://postgres:password@ambush-spicedb-postgres:5432/spice_ambush?sslmode=disable
+    networks:
+      - devsoc-network
+    depends_on:
+      ambush-spicedb-postgres:
+        condition: service_healthy
+
+  ambush-metadata-postgres:
     image: postgres:18-alpine
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: password
-      POSTGRES_DB: ambush
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=meta_ambush
+    ports:
+      - "5432:5432"
     networks:
       - devsoc-network
     volumes:
-      - postgres_data:/var/lib/postgresql
+      - metadata_postgres_data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 5s
       timeout: 5s
       retries: 5
 
+  ambush-spicedb-postgres:
+    image: postgres:18-alpine
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=spice_ambush
+    ports:
+      - "5467:5432" # Host: 5467 -> Container: 5432
+    networks:
+      - devsoc-network
+    volumes:
+      - spicedb_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    command: postgres -c track_commit_timestamp=on # flag needed for spicedb
+
 volumes:
-  postgres_data:
+  metadata_postgres_data:
+  spicedb_postgres_data:
 
 networks:
   devsoc-network:

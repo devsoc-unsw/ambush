@@ -61,7 +61,7 @@ services:
     networks:
       - devsoc-network
     volumes:
-      - metadata_postgres_data:/var/lib/postgresql/data
+      - metadata_postgres_data:/var/lib/postgresql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 5s
@@ -79,7 +79,7 @@ services:
     networks:
       - devsoc-network
     volumes:
-      - spicedb_postgres_data:/var/lib/postgresql/data
+      - spicedb_postgres_data:/var/lib/postgresql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 5s

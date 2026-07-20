@@ -1,12 +1,15 @@
 services:
   ambush-dev-container:
-    container_name: ambush-dev-container
+    build:
+      context: ..
+      dockerfile: .devcontainer/Dockerfile
     image: ghcr.io/devsoc-unsw/ambush-devcontainer
     stdin_open: true
     tty: true
     ports:
-      # expose ports (3000 computer <-> 3000 on the container)
-      - "3000:3000"
+      # expose ports (host <-> container)
+      - "3000:3000" # frontend (vite)
+      - "8080:8080" # backend (go)
     volumes:
       - ../:/root/ambush
     environment:

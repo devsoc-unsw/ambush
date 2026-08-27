@@ -1,5 +1,6 @@
 services:
   ambush-dev-container:
+    container_name: ambush-dev-container
     build:
       context: ..
       dockerfile: .devcontainer/Dockerfile
@@ -12,6 +13,10 @@ services:
       - "8080:8080" # backend (go)
     volumes:
       - ../:/root/ambush
+      - ${HOME}/.config/nvim:/root/.config/nvim
+      - nvim_share:/root/.local/share/nvim
+      - nvim_state:/root/.local/state/nvim
+      - nvim_cache:/root/.cache/nvim
     environment:
       - NODE_ENV=development
       - DATABASE_URL=postgres://postgres:password@ambush-postgres:5432/ambush
@@ -41,6 +46,9 @@ services:
 
 volumes:
   postgres_data:
+  nvim_share:
+  nvim_state:
+  nvim_cache:
 
 networks:
   devsoc-network:

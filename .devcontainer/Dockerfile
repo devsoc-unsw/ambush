@@ -10,6 +10,16 @@ RUN apt-get update && apt-get install -y \
     unzip \
     ripgrep \
     golang \
+    neovim \
+    nodejs \
+    # mason uses npm
+    npm \
+    # telescope uses fd find
+    fd-find \
+    # build-essential grabs gcc/make/libc headers (needed by cgo and nvim)
+    build-essential \
+    # ubuntu ships fd as `fdfind`; telescope looks for `fd`
+    && ln -s "$(command -v fdfind)" /usr/local/bin/fd \
     && rm -rf /var/lib/apt/lists/*
 
 ENV BUN_INSTALL="/root/.bun"

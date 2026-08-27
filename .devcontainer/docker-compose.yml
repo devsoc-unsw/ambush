@@ -96,7 +96,6 @@ services:
     command: postgres -c track_commit_timestamp=on # flag needed for spicedb
 
 volumes:
-  postgres_data:
   nvim_share:
   nvim_state:
   nvim_cache:

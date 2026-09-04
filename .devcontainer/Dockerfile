@@ -13,14 +13,15 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 ENV BUN_INSTALL="/root/.bun"
-ENV PATH="/root/.bun/bun:%${PATH}"
+ENV PATH="/root/.bun/bin:/root/go/bin:${PATH}"
 RUN curl -fsSL https://bun.com/install | bash
 
 # default go tooling
-ENV PATH="/root/go/bin:${PATH}"
 RUN go install golang.org/x/tools/gopls@latest \
     && go install github.com/go-delve/delve/cmd/dlv@latest \
     && go install golang.org/x/tools/cmd/goimports@latest \
+    && go install github.com/sqlc-dev/sqlc/cmd/sqlc@latest \
+    && go install github.com/pressly/goose/v3/cmd/goose@latest \
     && curl -sSfL https://golangci-lint.run/install.sh | sh -s -- -b $(go env GOPATH)/bin
 
 # set-up bashrc to have basic colours
@@ -46,6 +47,9 @@ alias la='ls -A --color=auto'
 bind "set colored-stats on"
 bind "set colored-completion-prefix on"
 BASHRC
+
+# Bind-mounted workspace often has a different owner than root.
+RUN git config --global --add safe.directory '*'
 
 # make ambush folder
 RUN mkdir /root/ambush

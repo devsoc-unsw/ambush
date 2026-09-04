@@ -3,6 +3,7 @@ FROM ubuntu:26.04
 ENV DEBIAN_FRONTEND=noninteractive
 ENV GOTOOLCHAIN=local
 ENV GOPATH=/root/go
+ENV GOBIN=/root/go/bin
 ENV BUN_INSTALL="/root/.bun"
 ENV PATH="/usr/local/go/bin:/root/.bun/bin:/root/go/bin:${PATH}"
 
@@ -31,7 +32,7 @@ RUN go install golang.org/x/tools/gopls@latest \
     && go install golang.org/x/tools/cmd/goimports@latest \
     && go install github.com/sqlc-dev/sqlc/cmd/sqlc@latest \
     && go install github.com/pressly/goose/v3/cmd/goose@latest \
-    && curl -sSfL https://golangci-lint.run/install.sh | sh -s -- -b $(go env GOPATH)/bin
+    && curl -sSfL https://golangci-lint.run/install.sh | sh -s -- -b /root/go/bin
 
 # set-up bashrc to have basic colours
 # NOTE: written via a quoted heredoc (not `echo`) so backslash sequences like
@@ -55,6 +56,12 @@ alias la='ls -A --color=auto'
 # Enable colored auto-completion (for when you hit Tab)
 bind "set colored-stats on"
 bind "set colored-completion-prefix on"
+
+# Keep Go / Bun tools on PATH in interactive and login shells.
+export GOPATH="${GOPATH:-/root/go}"
+export GOBIN="${GOBIN:-/root/go/bin}"
+export BUN_INSTALL="${BUN_INSTALL:-/root/.bun}"
+export PATH="/usr/local/go/bin:${BUN_INSTALL}/bin:${GOBIN}:${PATH}"
 BASHRC
 
 # Bind-mounted workspace often has a different owner than root.

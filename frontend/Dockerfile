@@ -1,27 +1,32 @@
 # syntax=docker/dockerfile:1
 FROM oven/bun:1 AS base
-WORKDIR /app
+# Set your preferred working directory
+WORKDIR /frontend
 
+# --- DEPENDENCIES STAGE ---
 FROM base AS deps
-COPY frontend/package.json frontend/bun.lock ./
+COPY package.json bun.lock* ./
 RUN bun install --frozen-lockfile
 
 # --- DEV STAGE ---
 FROM base AS dev
-COPY --from=deps /app/node_modules ./node_modules
-COPY frontend/ .
+# Notice we pull from /frontend/node_modules now
+COPY --from=deps /frontend/node_modules ./node_modules
+# Copy local files into the current WORKDIR (/frontend)
+COPY . .
 EXPOSE 3000
 CMD ["bun", "run", "dev", "--host", "0.0.0.0"]
 
-# --- PRODUCTION STAGE ---
+# --- BUILDER STAGE ---
 FROM base AS builder
-COPY --from=deps /app/node_modules ./node_modules
-COPY frontend/ .
+COPY --from=deps /frontend/node_modules ./node_modules
+COPY . .
 RUN bun run build
 
+# --- PRODUCTION STAGE ---
 FROM base AS production
-COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/node_modules ./node_modules
-COPY frontend/package.json frontend/vite.config.ts frontend/tsconfig.json ./
+COPY --from=builder /frontend/dist ./dist
+COPY --from=builder /frontend/node_modules ./node_modules
+COPY package.json vite.config.ts tsconfig.json ./
 EXPOSE 3000
 CMD ["bun", "run", "preview", "--host", "0.0.0.0"]

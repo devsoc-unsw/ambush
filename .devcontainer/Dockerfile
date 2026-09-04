@@ -1,6 +1,7 @@
 FROM ubuntu:26.04
 
 ENV DEBIAN_FRONTEND=noninteractive
+# Pin execution to the bundled toolchain (no automatic download/selection).
 ENV GOTOOLCHAIN=local
 ENV GOPATH=/root/go
 ENV GOBIN=/root/go/bin
@@ -18,8 +19,9 @@ RUN apt-get update && apt-get install -y \
     ripgrep \
     && rm -rf /var/lib/apt/lists/*
 
-# Official Go 1.27.1 tarball (not apt golang). GOTOOLCHAIN=local keeps
-# bind-mounted modules from being rewritten. Multi-arch: amd64 and arm64.
+# Official Go 1.27.1 tarball (not apt golang). GOTOOLCHAIN=local pins
+# execution to this bundled toolchain (no automatic download/selection).
+# Multi-arch: amd64 and arm64.
 RUN arch="$(dpkg --print-architecture)" \
     && curl -fsSL "https://go.dev/dl/go1.27.1.linux-${arch}.tar.gz" \
     | tar -C /usr/local -xz

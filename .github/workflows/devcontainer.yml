@@ -23,7 +23,9 @@ env:
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
-    permissions: ${{ github.event_name == 'pull_request' && fromJSON('{"contents":"read"}') || fromJSON('{"contents":"read","packages":"write"}') }}
+    permissions:
+      contents: read
+      packages: write
 
     steps:
       - name: Checkout repository

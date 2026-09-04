@@ -1,19 +1,27 @@
 FROM ubuntu:26.04
 
 ENV DEBIAN_FRONTEND=noninteractive
+ENV GOTOOLCHAIN=local
+ENV GOPATH=/root/go
+ENV BUN_INSTALL="/root/.bun"
+ENV PATH="/usr/local/go/bin:/root/.bun/bin:/root/go/bin:${PATH}"
+
 # install linux bash commands which wil be used
 RUN apt-get update && apt-get install -y \
     sudo \
     curl \
+    ca-certificates \
     git \
     vim \
     unzip \
     ripgrep \
-    golang \
     && rm -rf /var/lib/apt/lists/*
 
-ENV BUN_INSTALL="/root/.bun"
-ENV PATH="/root/.bun/bin:/root/go/bin:${PATH}"
+# Official Go 1.27.1 (matches go.mod / CI). Multi-arch: amd64 and arm64.
+RUN arch="$(dpkg --print-architecture)" \
+    && curl -fsSL "https://go.dev/dl/go1.27.1.linux-${arch}.tar.gz" \
+    | tar -C /usr/local -xz
+
 RUN curl -fsSL https://bun.com/install | bash
 
 # default go tooling
@@ -54,3 +62,4 @@ RUN git config --global --add safe.directory '*'
 # make ambush folder
 RUN mkdir /root/ambush
 WORKDIR /root/ambush
+

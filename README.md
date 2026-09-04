@@ -9,7 +9,7 @@
 ```bash
 docker compose up -d
 ```
-If this doesn't work install the docker-compose plugin
+If this doesn't work install the docker-compose plugin. To rebuild the image locally after Dockerfile changes, add `--build`.
 
 2. To enter the dev environment
 ```bash

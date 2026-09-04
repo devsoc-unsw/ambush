@@ -17,7 +17,8 @@ RUN apt-get update && apt-get install -y \
     ripgrep \
     && rm -rf /var/lib/apt/lists/*
 
-# Official Go 1.27.1 (matches go.mod / CI). Multi-arch: amd64 and arm64.
+# Official Go 1.27.1 tarball (not apt golang). GOTOOLCHAIN=local keeps
+# bind-mounted modules from being rewritten. Multi-arch: amd64 and arm64.
 RUN arch="$(dpkg --print-architecture)" \
     && curl -fsSL "https://go.dev/dl/go1.27.1.linux-${arch}.tar.gz" \
     | tar -C /usr/local -xz
@@ -57,7 +58,8 @@ bind "set colored-completion-prefix on"
 BASHRC
 
 # Bind-mounted workspace often has a different owner than root.
-RUN git config --global --add safe.directory '*'
+# Trust only this image's workspace path, not every directory in the container.
+RUN git config --global --add safe.directory /root/ambush
 
 # make ambush folder
 RUN mkdir /root/ambush

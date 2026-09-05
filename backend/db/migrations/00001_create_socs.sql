@@ -1,6 +1,6 @@
--- +goose UP
+-- +goose Up
 CREATE TABLE societies (
-    id          BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    id          SERIAL PRIMARY KEY,
     name        TEXT NOT NULL,
     slug        TEXT NOT NULL UNIQUE,
     created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -8,5 +8,5 @@ CREATE TABLE societies (
 );
 
 
--- +goose DOWN
+-- +goose Down
 DROP TABLE societies;

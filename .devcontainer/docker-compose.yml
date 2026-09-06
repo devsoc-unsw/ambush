@@ -1,8 +1,12 @@
+name: ambush
+
 services:
   ambush-dev-container:
+    container_name: ambush-dev-container
     build:
       context: ..
       dockerfile: .devcontainer/Dockerfile
+    # `docker compose build` / `up --build` tags the result as this name.
     image: ghcr.io/devsoc-unsw/ambush-devcontainer
     stdin_open: true
     tty: true
@@ -14,7 +18,7 @@ services:
       - ../:/root/ambush
     environment:
       - NODE_ENV=development
-      - DATABASE_URL=postgres://postgres:password@ambush-metadata-postgres:5432/meta_ambush
+      - DATABASE_URL=postgres://postgres:password@ambush-metadata-postgres:5432/meta_ambush?sslmode=disable
     networks:
       - devsoc-network
     depends_on:
@@ -22,6 +26,8 @@ services:
         condition: service_healthy
       spicedb-dev:
         condition: service_started
+    cap_add:
+      - SYS_PTRACE
     security_opt:
       - seccomp:unconfined
 

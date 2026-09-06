@@ -70,7 +70,6 @@ jobs:
 
       - name: Run Go Tests
         run: go test -v ./...
-        working-directory: ./backend
 
       - name: Verify Backend Docker Build
         run: docker build -t backend-test .

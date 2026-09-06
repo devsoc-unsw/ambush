@@ -1,0 +1,75 @@
+name: Full Stack CI Pipeline
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  # ==========================================
+  # JOB 1: Frontend
+  # ==========================================
+  fast-checks-frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./frontend
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install TypeScript Dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Check TypeScript Lint
+        run: bun run lint
+
+      - name: Check TypeScript Compile
+        run: bun run build
+
+      - name: Run TypeScript Tests
+        run: bun run test
+
+      - name: Verify Frontend Docker Build
+        run: docker build -t frontend-test .
+
+  # ==========================================
+  # JOB 2: Backend
+  # ==========================================
+  fast-checks-backend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./backend
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.27.1'
+          cache: true
+          cache-dependency-path: backend/go.sum
+
+      - name: Install Go Dependencies
+        run: go mod download
+
+      - name: Check Go Lint
+        uses: golangci/golangci-lint-action@v9
+        with:
+          version: latest
+          args: --timeout=5m
+          working-directory: backend
+
+      - name: Run Go Tests
+        run: go test -v ./...
+
+      - name: Verify Backend Docker Build
+        run: docker build -t backend-test .

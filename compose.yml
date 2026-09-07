@@ -1,0 +1,4 @@
+name: ambush
+
+include:
+  - path: .devcontainer/docker-compose.yml

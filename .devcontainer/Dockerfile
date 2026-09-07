@@ -1,10 +1,18 @@
 FROM ubuntu:26.04
 
 ENV DEBIAN_FRONTEND=noninteractive
+# Pin execution to the bundled toolchain (no automatic download/selection).
+ENV GOTOOLCHAIN=local
+ENV GOPATH=/root/go
+ENV GOBIN=/root/go/bin
+ENV BUN_INSTALL="/root/.bun"
+ENV PATH="/usr/local/go/bin:/root/.bun/bin:/root/go/bin:${PATH}"
+
 # install linux bash commands which wil be used
 RUN apt-get update && apt-get install -y \
     sudo \
     curl \
+    ca-certificates \
     git \
     vim \
     unzip \
@@ -22,16 +30,22 @@ RUN apt-get update && apt-get install -y \
     && ln -s "$(command -v fdfind)" /usr/local/bin/fd \
     && rm -rf /var/lib/apt/lists/*
 
-ENV BUN_INSTALL="/root/.bun"
-ENV PATH="/root/.bun/bun:%${PATH}"
+# Official Go 1.27.1 tarball (not apt golang). GOTOOLCHAIN=local pins
+# execution to this bundled toolchain (no automatic download/selection).
+# Multi-arch: amd64 and arm64.
+RUN arch="$(dpkg --print-architecture)" \
+    && curl -fsSL "https://go.dev/dl/go1.27.1.linux-${arch}.tar.gz" \
+    | tar -C /usr/local -xz
+
 RUN curl -fsSL https://bun.com/install | bash
 
 # default go tooling
-ENV PATH="/root/go/bin:${PATH}"
 RUN go install golang.org/x/tools/gopls@latest \
     && go install github.com/go-delve/delve/cmd/dlv@latest \
     && go install golang.org/x/tools/cmd/goimports@latest \
-    && curl -sSfL https://golangci-lint.run/install.sh | sh -s -- -b $(go env GOPATH)/bin
+    && go install github.com/sqlc-dev/sqlc/cmd/sqlc@latest \
+    && go install github.com/pressly/goose/v3/cmd/goose@latest \
+    && curl -sSfL https://golangci-lint.run/install.sh | sh -s -- -b /root/go/bin
 
 # set-up bashrc to have basic colours
 # NOTE: written via a quoted heredoc (not `echo`) so backslash sequences like
@@ -55,7 +69,17 @@ alias la='ls -A --color=auto'
 # Enable colored auto-completion (for when you hit Tab)
 bind "set colored-stats on"
 bind "set colored-completion-prefix on"
+
+# Keep Go / Bun tools on PATH in interactive and login shells.
+export GOPATH="${GOPATH:-/root/go}"
+export GOBIN="${GOBIN:-/root/go/bin}"
+export BUN_INSTALL="${BUN_INSTALL:-/root/.bun}"
+export PATH="/usr/local/go/bin:${BUN_INSTALL}/bin:${GOBIN}:${PATH}"
 BASHRC
+
+# Bind-mounted workspace often has a different owner than root.
+# Trust only this image's workspace path, not every directory in the container.
+RUN git config --global --add safe.directory /root/ambush
 
 # make ambush folder
 RUN mkdir /root/ambush

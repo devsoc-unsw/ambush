@@ -16,10 +16,6 @@ services:
       - "8080:8080" # backend (go)
     volumes:
       - ../:/root/ambush
-      - ${HOME}/.config/nvim:/root/.config/nvim
-      - nvim_share:/root/.local/share/nvim
-      - nvim_state:/root/.local/state/nvim
-      - nvim_cache:/root/.cache/nvim
     environment:
       - NODE_ENV=development
       - DATABASE_URL=postgres://postgres:password@ambush-metadata-postgres:5432/meta_ambush?sslmode=disable
@@ -101,9 +97,6 @@ services:
     command: postgres -c track_commit_timestamp=on # flag needed for spicedb
 
 volumes:
-  nvim_share:
-  nvim_state:
-  nvim_cache:
   metadata_postgres_data:
   spicedb_postgres_data:
 

@@ -17,17 +17,6 @@ RUN apt-get update && apt-get install -y \
     vim \
     unzip \
     ripgrep \
-    golang \
-    neovim \
-    nodejs \
-    # mason uses npm
-    npm \
-    # telescope uses fd find
-    fd-find \
-    # build-essential grabs gcc/make/libc headers (needed by cgo and nvim)
-    build-essential \
-    # ubuntu ships fd as `fdfind`; telescope looks for `fd`
-    && ln -s "$(command -v fdfind)" /usr/local/bin/fd \
     && rm -rf /var/lib/apt/lists/*
 
 # Official Go 1.27.1 tarball (not apt golang). GOTOOLCHAIN=local pins

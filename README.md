@@ -5,6 +5,8 @@
 
 ## Development
 
+### Starting (shell)
+
 If this is the first time you are starting development on this repo OR a change was made to a Dockerfile and you need to rebuild, first do:
 ```bash
 docker compose up -d --build
@@ -21,6 +23,16 @@ To enter the dev environment:
 docker exec -it ambush-dev-container bash
 ```
 
+### Starting (vscode; **more convenient**)
+
+Ensure your `pwd` is the root ambush directory, and after performing
+
+```bash
+code .
+```
+
+make sure you have Microsoft's Dev Containers extension installed. This should prompt to 'Rebuild and Reopen in Container'. If this is the first time building or rebuilding after a Dockerfile change, this may take some time. That's it after that!
+
 ### Closing down development
 
 1. To exit the dev environment:
@@ -32,8 +44,6 @@ exit
 ```bash
 docker compose down
 ```
-
-### Development
 
 In the dev shell: `cd frontend` then `bun run dev` (port 3000), `bun run lint` for lint, and `bun run test` for tests (test files need the suffix `.test.ts`).
 

@@ -75,5 +75,5 @@ This will output the type-safe Go bindings (using `pgx/v5`) directly in the `bac
 Apply your migrations against your development database using `goose`:
 
 ```bash
-goose -dir migrations postgres "user=postgres password=postgres dbname=warchest sslmode=disable" up
+goose -dir migrations postgres "$DATABASE_URL" up
 ```

@@ -9,7 +9,22 @@
 ```bash
 docker compose up -d
 ```
-If this doesn't work install the docker-compose plugin
+If this doesn't work install the docker-compose plugin.
+
+To rebuild the local image after `.devcontainer/Dockerfile` changes (retags `ghcr.io/devsoc-unsw/ambush-devcontainer` on your machine; does not push):
+```bash
+docker compose up -d --build
+```
+Build only:
+```bash
+docker compose build
+```
+
+To publish that image to GHCR, merge the Dockerfile change to `main`. CI then pushes multi-arch `ghcr.io/devsoc-unsw/ambush-devcontainer:latest`. From `main` you can also run:
+```bash
+gh workflow run devcontainer.yml --ref main
+```
+Do not `docker compose push` a local build — that would replace the multi-arch registry image with a single-platform one.
 
 2. To enter the dev environment
 ```bash

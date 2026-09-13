@@ -17,6 +17,7 @@ RUN apt-get update && apt-get install -y \
     vim \
     unzip \
     ripgrep \
+    build-essential \
     && rm -rf /var/lib/apt/lists/*
 
 # Official Go 1.27.1 tarball (not apt golang). GOTOOLCHAIN=local pins
@@ -73,4 +74,3 @@ RUN git config --global --add safe.directory /root/ambush
 # make ambush folder
 RUN mkdir /root/ambush
 WORKDIR /root/ambush
-

@@ -5,14 +5,132 @@
 package db
 
 import (
+	"database/sql/driver"
+	"fmt"
+
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-type User struct {
-	ID        int64
-	Username  string
-	Email     string
+type AuditAction string
+
+const (
+	AuditActionCreate AuditAction = "create"
+	AuditActionUpdate AuditAction = "update"
+	AuditActionDelete AuditAction = "delete"
+)
+
+func (e *AuditAction) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = AuditAction(s)
+	case string:
+		*e = AuditAction(s)
+	default:
+		return fmt.Errorf("unsupported scan type for AuditAction: %T", src)
+	}
+	return nil
+}
+
+type NullAuditAction struct {
+	AuditAction AuditAction
+	Valid       bool // Valid is true if AuditAction is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullAuditAction) Scan(value interface{}) error {
+	if value == nil {
+		ns.AuditAction, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.AuditAction.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullAuditAction) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.AuditAction), nil
+}
+
+type AuditEntity string
+
+const (
+	AuditEntitySociety    AuditEntity = "society"
+	AuditEntitySocrole    AuditEntity = "socrole"
+	AuditEntityMembership AuditEntity = "membership"
+)
+
+func (e *AuditEntity) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = AuditEntity(s)
+	case string:
+		*e = AuditEntity(s)
+	default:
+		return fmt.Errorf("unsupported scan type for AuditEntity: %T", src)
+	}
+	return nil
+}
+
+type NullAuditEntity struct {
+	AuditEntity AuditEntity
+	Valid       bool // Valid is true if AuditEntity is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullAuditEntity) Scan(value interface{}) error {
+	if value == nil {
+		ns.AuditEntity, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.AuditEntity.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullAuditEntity) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.AuditEntity), nil
+}
+
+type AuditLog struct {
+	ID          int64
+	ChangeSetID pgtype.UUID
+	SocID       int32
+	EntityType  AuditEntity
+	EntityID    int32
+	Action      AuditAction
+	ActorID     pgtype.UUID
+	Before      []byte
+	After       []byte
+	UndoesID    pgtype.Int8
+	CreatedAt   pgtype.Timestamptz
+}
+
+type Membership struct {
+	ID        int32
+	RoleID    int32
+	UserID    pgtype.UUID
+	CreatedAt pgtype.Timestamptz
+}
+
+type Society struct {
+	ID        int32
+	Name      string
+	Slug      string
 	CreatedAt pgtype.Timestamptz
 	UpdatedAt pgtype.Timestamptz
 }
 
+type Socrole struct {
+	ID           int32
+	SocID        int32
+	ParentRoleID pgtype.Int4
+	Name         string
+	CreatedAt    pgtype.Timestamptz
+	UpdatedAt    pgtype.Timestamptz
+}

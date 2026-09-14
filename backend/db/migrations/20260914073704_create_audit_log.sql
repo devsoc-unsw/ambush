@@ -9,7 +9,7 @@ CREATE TABLE audit_log (
     entity_type    audit_entity NOT NULL,
     entity_id      INTEGER NOT NULL,
     action         audit_action NOT NULL,
-    actor_id       UUID NOT NULL,          -- ory identity
+    actor_id       UUID NOT NULL,
     before         JSONB,
     after          JSONB,
     undoes_id      BIGINT REFERENCES audit_log (id),
@@ -40,13 +40,13 @@ END;
 $$ LANGUAGE plpgsql;
 -- +goose StatementEnd
 
-CREATE TRIGGER trg
+CREATE TRIGGER trg_audit_log_append_only
     BEFORE UPDATE OR DELETE ON audit_log
-    FOR EACH ROW Eis_append_only();
+    FOR EACH ROW EXECUTE FUNCTION audit_log_is_append_only();
 
 -- +goose Down
-DROP TRIGGER trg_adit_log;
-DROP FUNCTION audi
-DROP TABLE audit_l
+DROP TRIGGER trg_audit_log_append_only ON audit_log;
+DROP FUNCTION audit_log_is_append_only;
+DROP TABLE audit_log;
 DROP TYPE audit_action;
-DROP TYPE audit_en
+DROP TYPE audit_entity;

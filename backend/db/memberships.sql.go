@@ -38,7 +38,7 @@ func (q *Queries) CreateMembership(ctx context.Context, arg CreateMembershipPara
 	return i, err
 }
 
-const getMembership = `-- name: GetMembership :one
+const listUserPortfolios = `-- name: ListUserPortfolios :many
 
 
 
@@ -58,7 +58,7 @@ WHERE m.user_id = $1
 ORDER BY s.name, r.name
 `
 
-type GetMembershipRow struct {
+type ListUserPortfoliosRow struct {
 	MembershipID     int32
 	JoinedAt         pgtype.Timestamptz
 	RoleID           int32
@@ -69,19 +69,35 @@ type GetMembershipRow struct {
 	SocietySlug      string
 }
 
+// TODO: GetMembership :one
+// TODO: ListMembershipsBySociety :many
+// TODO: ListMembershipsByRole :many
 // "given a person, which portfolios are they part of?"
-func (q *Queries) GetMembership(ctx context.Context, userID pgtype.UUID) (GetMembershipRow, error) {
-	row := q.db.QueryRow(ctx, getMembership, userID)
-	var i GetMembershipRow
-	err := row.Scan(
-		&i.MembershipID,
-		&i.JoinedAt,
-		&i.RoleID,
-		&i.RoleName,
-		&i.RoleParentRoleID,
-		&i.SocietyID,
-		&i.SocietyName,
-		&i.SocietySlug,
-	)
-	return i, err
+func (q *Queries) ListUserPortfolios(ctx context.Context, userID pgtype.UUID) ([]ListUserPortfoliosRow, error) {
+	rows, err := q.db.Query(ctx, listUserPortfolios, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListUserPortfoliosRow
+	for rows.Next() {
+		var i ListUserPortfoliosRow
+		if err := rows.Scan(
+			&i.MembershipID,
+			&i.JoinedAt,
+			&i.RoleID,
+			&i.RoleName,
+			&i.RoleParentRoleID,
+			&i.SocietyID,
+			&i.SocietyName,
+			&i.SocietySlug,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }

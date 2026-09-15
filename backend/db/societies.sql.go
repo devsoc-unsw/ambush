@@ -11,19 +11,19 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-const createSocity = `-- name: CreateSocity :one
+const createSociety = `-- name: CreateSociety :one
 INSERT INTO societies (name, slug)
 VALUES ($1, $2)
 RETURNING id, name, slug, created_at, updated_at
 `
 
-type CreateSocityParams struct {
+type CreateSocietyParams struct {
 	Name string
 	Slug string
 }
 
-func (q *Queries) CreateSocity(ctx context.Context, arg CreateSocityParams) (Society, error) {
-	row := q.db.QueryRow(ctx, createSocity, arg.Name, arg.Slug)
+func (q *Queries) CreateSociety(ctx context.Context, arg CreateSocietyParams) (Society, error) {
+	row := q.db.QueryRow(ctx, createSociety, arg.Name, arg.Slug)
 	var i Society
 	err := row.Scan(
 		&i.ID,
@@ -35,7 +35,7 @@ func (q *Queries) CreateSocity(ctx context.Context, arg CreateSocityParams) (Soc
 	return i, err
 }
 
-const getSociety = `-- name: GetSociety :one
+const updateSociety = `-- name: UpdateSociety :one
 
 
 
@@ -47,14 +47,17 @@ WHERE id = $3
 RETURNING id, name, slug, created_at, updated_at
 `
 
-type GetSocietyParams struct {
+type UpdateSocietyParams struct {
 	Name pgtype.Text
 	Slug pgtype.Text
 	ID   int32
 }
 
-func (q *Queries) GetSociety(ctx context.Context, arg GetSocietyParams) (Society, error) {
-	row := q.db.QueryRow(ctx, getSociety, arg.Name, arg.Slug, arg.ID)
+// TODO: GetSociety :one
+// TODO: GetSocietyBySlug :one
+// TODO: ListSocieties :many
+func (q *Queries) UpdateSociety(ctx context.Context, arg UpdateSocietyParams) (Society, error) {
+	row := q.db.QueryRow(ctx, updateSociety, arg.Name, arg.Slug, arg.ID)
 	var i Society
 	err := row.Scan(
 		&i.ID,

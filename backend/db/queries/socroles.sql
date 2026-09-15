@@ -3,16 +3,16 @@ INSERT INTO socroles (soc_id, parent_role_id, name)
 VALUES ($1, $2, $3)
 RETURNING *;
 
--- name: GetSocRole :one
+-- TODO: GetSocRole :one
 
--- name: GetSocRoleInSociety :one
+-- TODO: GetSocRoleInSociety :one
 
--- name: ListSocRolesBySociety :many
+-- TODO: ListSocRolesBySociety :many
 
--- name: UpdateSocRole :one
+-- TODO: UpdateSocRole :one
 
--- name: DeleteSocRole :exec
+-- TODO: DeleteSocRole :exec
 
--- name: ListRoleAncestors :many
+-- TODO: ListRoleAncestors :many
 
--- name: ListRoleSubtree :many
+-- TODO: ListRoleSubtree :many

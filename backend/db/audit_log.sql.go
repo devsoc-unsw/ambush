@@ -7,16 +7,67 @@ package db
 
 import (
 	"context"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const createAuditEntry = `-- name: CreateAuditEntry :one
+INSERT INTO audit_log (
+    change_set_id, soc_id, entity_type, entity_id,
+    action, actor_id, before, after, undoes_id
+)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+RETURNING id, change_set_id, soc_id, entity_type, entity_id, action, actor_id, before, after, undoes_id, created_at
+`
 
+type CreateAuditEntryParams struct {
+	ChangeSetID pgtype.UUID
+	SocID       int32
+	EntityType  AuditEntity
+	EntityID    int32
+	Action      AuditAction
+	ActorID     pgtype.UUID
+	Before      []byte
+	After       []byte
+	UndoesID    pgtype.Int8
+}
+
+func (q *Queries) CreateAuditEntry(ctx context.Context, arg CreateAuditEntryParams) (AuditLog, error) {
+	row := q.db.QueryRow(ctx, createAuditEntry,
+		arg.ChangeSetID,
+		arg.SocID,
+		arg.EntityType,
+		arg.EntityID,
+		arg.Action,
+		arg.ActorID,
+		arg.Before,
+		arg.After,
+		arg.UndoesID,
+	)
+	var i AuditLog
+	err := row.Scan(
+		&i.ID,
+		&i.ChangeSetID,
+		&i.SocID,
+		&i.EntityType,
+		&i.EntityID,
+		&i.Action,
+		&i.ActorID,
+		&i.Before,
+		&i.After,
+		&i.UndoesID,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const getAuditEntry = `-- name: GetAuditEntry :one
 SELECT id, change_set_id, soc_id, entity_type, entity_id, action, actor_id, before, after, undoes_id, created_at FROM audit_log
 WHERE id = $1
 `
 
-func (q *Queries) CreateAuditEntry(ctx context.Context, id int64) (AuditLog, error) {
-	row := q.db.QueryRow(ctx, createAuditEntry, id)
+func (q *Queries) GetAuditEntry(ctx context.Context, id int64) (AuditLog, error) {
+	row := q.db.QueryRow(ctx, getAuditEntry, id)
 	var i AuditLog
 	err := row.Scan(
 		&i.ID,

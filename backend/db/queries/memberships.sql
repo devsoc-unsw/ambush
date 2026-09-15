@@ -6,11 +6,11 @@ FROM socroles r
 WHERE r.id = sqlc.arg('role_id') AND r.soc_id = sqlc.arg('soc_id')
 RETURNING *;
 
--- name: GetMembership :one
+-- TODO: GetMembership :one
 
--- name: ListMembershipsBySociety :many
+-- TODO: ListMembershipsBySociety :many
 
--- name: ListMembershipsByRole :many
+-- TODO: ListMembershipsByRole :many
 
 -- "given a person, which portfolios are they part of?"
 -- name: ListUserPortfolios :many
@@ -29,6 +29,6 @@ JOIN societies s ON s.id = r.soc_id
 WHERE m.user_id = $1
 ORDER BY s.name, r.name;
 
--- name: GetUserMembershipInSociety :one
+-- TODO: GetUserMembershipInSociety :one
 
--- name: DeleteMembership :exec
+-- TODO: DeleteMembership :exec

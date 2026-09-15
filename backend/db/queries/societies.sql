@@ -1,13 +1,13 @@
--- name: CreateSocity :one
+-- name: CreateSociety :one
 INSERT INTO societies (name, slug)
 VALUES ($1, $2)
 RETURNING *;
 
--- name: GetSociety :one
+-- TODO: GetSociety :one
 
--- name: GetSocietyBySlug :one
+-- TODO: GetSocietyBySlug :one
 
--- name: ListSocieties :many
+-- TODO: ListSocieties :many
 
 -- name: UpdateSociety :one
 UPDATE societies

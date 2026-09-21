@@ -32,7 +32,8 @@ func (s *Service) CreateSociety(ctx context.Context, in NewSociety) (int32, erro
 	q := s.q.WithTx(tx)
 
 	soc, err := q.CreateSociety(ctx, db.CreateSocietyParams{Name: in.Name, Slug: in.Slug})
-	// special err case for
+	// TODO: err for inserting using a taken slug
+	// NOTE: should return a pg errcode 23505
 	if err != nil {
 		return 0, fmt.Errorf("create society: %w", err)
 	}

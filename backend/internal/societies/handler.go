@@ -37,7 +37,7 @@ func (h *Handler) createSociety(w http.ResponseWriter, r *http.Request) {
 		Slug: body.Slug,
 	})
 	if err != nil {
-		log.Printf("create society: %w", err)
+		log.Printf("create society: %v", err)
 		writeError(w, http.StatusInternalServerError, "could not create society")
 		return
 	}
@@ -48,7 +48,9 @@ func (h *Handler) createSociety(w http.ResponseWriter, r *http.Request) {
 func writeJSON(w http.ResponseWriter, status int, v any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
-	json.NewEncoder(w).Encode(v)
+	if err := json.NewEncoder(w).Encode(v); err != nil {
+		log.Printf("json write: %v", err)
+	}
 }
 
 func writeError(w http.ResponseWriter, status int, msg string) {

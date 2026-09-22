@@ -61,8 +61,9 @@ func run() error {
 
 	go func() {
 		log.Println("http listening on :8080")
-		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			log.Printf("http error: %w", err)
+		if err := srv.ListenAndServe(); err != nil && !errors.Is(err,
+			http.ErrServerClosed) {
+			log.Printf("http error: %v", err)
 			stop()
 		}
 	}()

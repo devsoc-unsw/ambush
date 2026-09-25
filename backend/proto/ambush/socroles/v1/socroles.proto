@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package ambush.socroles.v1;
+
+service SocRoleService {
+  rpc CreateSocRole(CreateSocRoleRequest) returns (CreateSocRoleResponse);
+}
+
+message CreateSocRoleRequest {
+  int32 society_id = 1;
+  optional int32 parent_role_id = 2; // unset for a top-level role
+  string name = 3;
+}
+
+message CreateSocRoleResponse {
+  int32 role_id = 1;
+}

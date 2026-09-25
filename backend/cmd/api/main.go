@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -13,6 +14,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+	"google.golang.org/grpc"
 )
 
 func main() {
@@ -70,7 +72,12 @@ func run() error {
 	}()
 
 	// gRPC: 8067
-	// TODO: need proto buf
+	lis, err := net.Listen("tcp", ":8067")
+	if err != nil {
+		return fmt.Errorf("grpc listen: %w", err)
+	}
+	grpcSrv := grpc.NewServer()
+	societiesv1.RegisterSocietyServiceServer(grpcSrv, new grpc server handler {})
 
 	// shutdown
 	<-ctx.Done()

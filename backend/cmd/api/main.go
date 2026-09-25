@@ -46,9 +46,10 @@ func run() error {
 
 	// HTTP: 8080
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-	})
+	mux.HandleFunc("GET /healthz",
+		func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusOK)
+		})
 	societies.NewHandler(svc).Routes(mux)
 
 	srv := &http.Server{
@@ -72,7 +73,11 @@ func run() error {
 	// TODO: need proto buf
 
 	// shutdown
-	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	<-ctx.Done()
+	log.Println("shutting down")
+
+	shutdownCtx, cancel := context.WithTimeout(context.Background(),
+		10*time.Second)
 	defer cancel()
 	return srv.Shutdown(shutdownCtx)
 }

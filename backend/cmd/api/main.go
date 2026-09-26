@@ -77,7 +77,6 @@ func run() error {
 		return fmt.Errorf("grpc listen: %w", err)
 	}
 	grpcSrv := grpc.NewServer()
-	societiesv1.RegisterSocietyServiceServer(grpcSrv, new grpc server handler {})
 
 	// shutdown
 	<-ctx.Done()

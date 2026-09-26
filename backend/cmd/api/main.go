@@ -1,6 +1,7 @@
 package main
 
 import (
+	"backend/internal/memberships"
 	"backend/internal/societies"
 	"context"
 	"errors"
@@ -15,6 +16,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/reflection"
 )
 
 func main() {
@@ -77,6 +79,15 @@ func run() error {
 		return fmt.Errorf("grpc listen: %w", err)
 	}
 	grpcSrv := grpc.NewServer()
+	memberships.NewGRPCServer(memberships.NewService(pool)).Register(grpcSrv)
+	reflection.Register(grpcSrv)
+	go func() {
+		log.Println("grpc listening on :8067")
+		if err := grpcSrv.Serve(lis); err != nil {
+			log.Printf("grpc error: %v", err)
+			stop()
+		}
+	}()
 
 	// shutdown
 	<-ctx.Done()
@@ -85,5 +96,7 @@ func run() error {
 	shutdownCtx, cancel := context.WithTimeout(context.Background(),
 		10*time.Second)
 	defer cancel()
+
+	grpcSrv.GracefulStop()
 	return srv.Shutdown(shutdownCtx)
 }

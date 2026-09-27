@@ -56,6 +56,7 @@ func run() error {
 
 	societies.NewHandler(societies.NewService(pool)).Routes(mux)
 	socroles.NewHandler(socroles.NewService(pool)).Routes(mux)
+	memberships.NewHandler(memberships.NewService(pool)).Routes(mux)
 
 	srv := &http.Server{
 		Addr:              ":8080",

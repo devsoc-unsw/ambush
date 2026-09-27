@@ -3,6 +3,7 @@ package main
 import (
 	"backend/internal/memberships"
 	"backend/internal/societies"
+	"backend/internal/socroles"
 	"context"
 	"errors"
 	"fmt"
@@ -42,11 +43,9 @@ func run() error {
 	}
 	defer pool.Close()
 
-	if err := pool.Ping(ctx); err != nil {
+	if err = pool.Ping(ctx); err != nil {
 		return fmt.Errorf("db ping: %w", err)
 	}
-
-	svc := societies.NewService(pool)
 
 	// HTTP: 8080
 	mux := http.NewServeMux()
@@ -54,7 +53,9 @@ func run() error {
 		func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusOK)
 		})
-	societies.NewHandler(svc).Routes(mux)
+
+	societies.NewHandler(societies.NewService(pool)).Routes(mux)
+	socroles.NewHandler(socroles.NewService(pool)).Routes(mux)
 
 	srv := &http.Server{
 		Addr:              ":8080",
@@ -66,7 +67,7 @@ func run() error {
 
 	go func() {
 		log.Println("http listening on :8080")
-		if err := srv.ListenAndServe(); err != nil && !errors.Is(err,
+		if err = srv.ListenAndServe(); err != nil && !errors.Is(err,
 			http.ErrServerClosed) {
 			log.Printf("http error: %v", err)
 			stop()

@@ -1,7 +1,7 @@
 -- note: ensures the role does indeed belong to the society the user is being added to
 -- name: CreateMembership :one
-INSERT INTO memberships (role_id, user_id)
-SELECT r.id, sqlc.arg('user_id')
+INSERT INTO memberships (role_id, user_id, term)
+SELECT r.id, sqlc.arg('user_id'), sqlc.narg('term')::text
 FROM socroles r
 WHERE r.id = sqlc.arg('role_id') AND r.soc_id = sqlc.arg('soc_id')
 RETURNING *;
@@ -16,7 +16,8 @@ FROM (
            unnest(sqlc.arg('user_ids')::uuid[]) AS user_id
 ) AS u
 JOIN socroles r ON r.id = u.role_id AND r.soc_id = sqlc.arg('soc_id')
-ON CONFLICT (role_id, user_id) DO NOTHING
+-- the WHERE has to match the partial unique index for postgres to find it
+ON CONFLICT (role_id, user_id) WHERE ended_at IS NULL DO NOTHING
 RETURNING *;
 
 -- TODO: ListMembershipsBySociety :many
@@ -37,9 +38,18 @@ SELECT
 FROM memberships m
 JOIN socroles r ON r.id = m.role_id
 JOIN societies s ON s.id = r.soc_id
-WHERE m.user_id = $1
+WHERE m.user_id = $1 AND m.ended_at IS NULL
 ORDER BY s.name, r.name;
 
 -- TODO: GetUserMembershipInSociety :one
+
+-- ends the current holders of a role. with user_id set, only that holder
+-- name: EndRoleMemberships :many
+UPDATE memberships
+SET ended_at = now()
+WHERE role_id = sqlc.arg('role_id')
+  AND ended_at IS NULL
+  AND (sqlc.narg('user_id')::uuid IS NULL OR user_id = sqlc.narg('user_id'))
+RETURNING id;
 
 -- TODO: DeleteMembership :exec

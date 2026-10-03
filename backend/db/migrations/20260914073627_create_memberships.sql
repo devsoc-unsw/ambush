@@ -4,9 +4,14 @@ CREATE TABLE memberships (
     role_id     INTEGER NOT NULL REFERENCES socroles(id) ON DELETE CASCADE,
     user_id     UUID NOT NULL, -- provided by ory
     created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
-
-    UNIQUE (role_id, user_id)
+    ended_at    TIMESTAMPTZ,    -- NULL = currently holds the role
+    term        TEXT            -- label only, e.g. '2026' or '2026 T1'
 );
+
+-- only one active row per (role, user), so ended rows can stay as history and
+-- the same person can hold the role again in a later term
+CREATE UNIQUE INDEX memberships_active_role_user_uniq
+    ON memberships (role_id, user_id) WHERE ended_at IS NULL;
 
 CREATE INDEX idx_memberships_user_id ON memberships (user_id);
 

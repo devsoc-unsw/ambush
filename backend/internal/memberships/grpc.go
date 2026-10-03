@@ -43,6 +43,9 @@ func (s *GRPCServer) CreateMembership(
 	if errors.Is(err, ErrRoleNotInSociety) {
 		return nil, status.Error(codes.NotFound, "role not found in society")
 	}
+	if errors.Is(err, ErrAlreadyMember) {
+		return nil, status.Error(codes.AlreadyExists, "user already holds this role")
+	}
 	if err != nil {
 		log.Printf("create membership: %v", err)
 		return nil, status.Error(codes.Internal, "could not create membership")

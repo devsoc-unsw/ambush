@@ -24,6 +24,8 @@ func (h *Handler) Routes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /memberships", h.createMembership)
 	mux.HandleFunc("POST /societies/{society_id}/memberships",
 		h.assignMemberships)
+	mux.HandleFunc("POST /societies/{society_id}/roles/{role_id}/handover",
+		h.handoverRole)
 }
 
 // caps how many rows one request can insert
@@ -54,6 +56,10 @@ func (h *Handler) createMembership(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusNotFound, "role not found in society")
 		return
 	}
+	if errors.Is(err, ErrAlreadyMember) {
+		httpx.WriteError(w, http.StatusConflict, "user already holds this role")
+		return
+	}
 	if err != nil {
 		log.Printf("create membership: %v", err)
 		httpx.WriteError(w, http.StatusInternalServerError,
@@ -67,8 +73,8 @@ func (h *Handler) createMembership(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) assignMemberships(w http.ResponseWriter, r *http.Request) {
 	// TODO: authz, caller must be a SocietyAdmin of society_id
-	societyID, err := strconv.ParseInt(r.PathValue("society_id"), 10, 32)
-	if err != nil || societyID <= 0 {
+	societyID, ok := pathID(r, "society_id")
+	if !ok {
 		httpx.WriteError(w, http.StatusBadRequest, "invalid society id")
 		return
 	}
@@ -79,7 +85,7 @@ func (h *Handler) assignMemberships(w http.ResponseWriter, r *http.Request) {
 			UserID uuid.UUID `json:"user_id"`
 		} `json:"memberships"`
 	}
-	if err = json.NewDecoder(r.Body).Decode(&body); err != nil {
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		httpx.WriteError(w, http.StatusBadRequest, "malformed json body")
 		return
 	}
@@ -99,7 +105,7 @@ func (h *Handler) assignMemberships(w http.ResponseWriter, r *http.Request) {
 		pairs[i] = MembershipPair{RoleID: m.RoleID, UserID: m.UserID}
 	}
 
-	res, err := h.svc.AssignMemberships(r.Context(), int32(societyID), pairs)
+	res, err := h.svc.AssignMemberships(r.Context(), societyID, pairs)
 	if errors.Is(err, ErrSocietyNotFound) {
 		httpx.WriteError(w, http.StatusNotFound, "society not found")
 		return
@@ -113,4 +119,70 @@ func (h *Handler) assignMemberships(w http.ResponseWriter, r *http.Request) {
 
 	httpx.WriteJSON(w, http.StatusOK,
 		map[string]int{"created": res.Created, "skipped": res.Skipped})
+}
+
+// parses a positive int32 path value like {society_id}
+func pathID(r *http.Request, name string) (int32, bool) {
+	id, err := strconv.ParseInt(r.PathValue(name), 10, 32)
+	if err != nil || id <= 0 {
+		return 0, false
+	}
+	return int32(id), true
+}
+
+func (h *Handler) handoverRole(w http.ResponseWriter, r *http.Request) {
+	// TODO: authz, caller must be a SocietyAdmin of society_id
+	societyID, ok := pathID(r, "society_id")
+	if !ok {
+		httpx.WriteError(w, http.StatusBadRequest, "invalid society id")
+		return
+	}
+	roleID, ok := pathID(r, "role_id")
+	if !ok {
+		httpx.WriteError(w, http.StatusBadRequest, "invalid role id")
+		return
+	}
+
+	var body struct {
+		NewUserID uuid.UUID `json:"new_user_id"`
+		// optional, leave out to end every current holder of the role
+		PreviousUserID *uuid.UUID `json:"previous_user_id"`
+		Term           string     `json:"term"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		httpx.WriteError(w, http.StatusBadRequest, "malformed json body")
+		return
+	}
+	if body.NewUserID == uuid.Nil || body.Term == "" ||
+		(body.PreviousUserID != nil && *body.PreviousUserID == uuid.Nil) {
+		httpx.WriteError(w, http.StatusBadRequest,
+			"new_user_id and term required, previous_user_id must be valid if set")
+		return
+	}
+
+	res, err := h.svc.HandoverRole(r.Context(), Handover{
+		SocietyID:      societyID,
+		RoleID:         roleID,
+		NewUserID:      body.NewUserID,
+		PreviousUserID: body.PreviousUserID,
+		Term:           body.Term,
+	})
+	switch {
+	case errors.Is(err, ErrRoleNotInSociety):
+		httpx.WriteError(w, http.StatusNotFound, "role not found in society")
+	case errors.Is(err, ErrPreviousHolderNotFound):
+		httpx.WriteError(w, http.StatusNotFound,
+			"previous user does not hold this role")
+	case errors.Is(err, ErrAlreadyMember):
+		httpx.WriteError(w, http.StatusConflict, "new user already holds this role")
+	case err != nil:
+		log.Printf("handover role: %v", err)
+		httpx.WriteError(w, http.StatusInternalServerError,
+			"could not hand over role")
+	default:
+		httpx.WriteJSON(w, http.StatusOK, map[string]int{
+			"membership_id": int(res.MembershipID),
+			"ended":         res.Ended,
+		})
+	}
 }

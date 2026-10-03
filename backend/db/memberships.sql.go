@@ -12,28 +12,36 @@ import (
 )
 
 const createMembership = `-- name: CreateMembership :one
-INSERT INTO memberships (role_id, user_id)
-SELECT r.id, $1
+INSERT INTO memberships (role_id, user_id, term)
+SELECT r.id, $1, $2::text
 FROM socroles r
-WHERE r.id = $2 AND r.soc_id = $3
-RETURNING id, role_id, user_id, created_at
+WHERE r.id = $3 AND r.soc_id = $4
+RETURNING id, role_id, user_id, created_at, ended_at, term
 `
 
 type CreateMembershipParams struct {
 	UserID pgtype.UUID
+	Term   pgtype.Text
 	RoleID int32
 	SocID  int32
 }
 
 // note: ensures the role does indeed belong to the society the user is being added to
 func (q *Queries) CreateMembership(ctx context.Context, arg CreateMembershipParams) (Membership, error) {
-	row := q.db.QueryRow(ctx, createMembership, arg.UserID, arg.RoleID, arg.SocID)
+	row := q.db.QueryRow(ctx, createMembership,
+		arg.UserID,
+		arg.Term,
+		arg.RoleID,
+		arg.SocID,
+	)
 	var i Membership
 	err := row.Scan(
 		&i.ID,
 		&i.RoleID,
 		&i.UserID,
 		&i.CreatedAt,
+		&i.EndedAt,
+		&i.Term,
 	)
 	return i, err
 }
@@ -47,8 +55,8 @@ FROM (
            unnest($2::uuid[]) AS user_id
 ) AS u
 JOIN socroles r ON r.id = u.role_id AND r.soc_id = $3
-ON CONFLICT (role_id, user_id) DO NOTHING
-RETURNING id, role_id, user_id, created_at
+ON CONFLICT (role_id, user_id) WHERE ended_at IS NULL DO NOTHING
+RETURNING id, role_id, user_id, created_at, ended_at, term
 `
 
 type CreateMembershipsParams struct {
@@ -58,6 +66,7 @@ type CreateMembershipsParams struct {
 }
 
 // TODO: GetMembership :one
+// the WHERE has to match the partial unique index for postgres to find it
 func (q *Queries) CreateMemberships(ctx context.Context, arg CreateMembershipsParams) ([]Membership, error) {
 	rows, err := q.db.Query(ctx, createMemberships, arg.RoleIds, arg.UserIds, arg.SocID)
 	if err != nil {
@@ -72,10 +81,49 @@ func (q *Queries) CreateMemberships(ctx context.Context, arg CreateMembershipsPa
 			&i.RoleID,
 			&i.UserID,
 			&i.CreatedAt,
+			&i.EndedAt,
+			&i.Term,
 		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const endRoleMemberships = `-- name: EndRoleMemberships :many
+
+UPDATE memberships
+SET ended_at = now()
+WHERE role_id = $1
+  AND ended_at IS NULL
+  AND ($2::uuid IS NULL OR user_id = $2)
+RETURNING id
+`
+
+type EndRoleMembershipsParams struct {
+	RoleID int32
+	UserID pgtype.UUID
+}
+
+// TODO: GetUserMembershipInSociety :one
+// ends the current holders of a role. with user_id set, only that holder
+func (q *Queries) EndRoleMemberships(ctx context.Context, arg EndRoleMembershipsParams) ([]int32, error) {
+	rows, err := q.db.Query(ctx, endRoleMemberships, arg.RoleID, arg.UserID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []int32
+	for rows.Next() {
+		var id int32
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
@@ -98,7 +146,7 @@ SELECT
 FROM memberships m
 JOIN socroles r ON r.id = m.role_id
 JOIN societies s ON s.id = r.soc_id
-WHERE m.user_id = $1
+WHERE m.user_id = $1 AND m.ended_at IS NULL
 ORDER BY s.name, r.name
 `
 

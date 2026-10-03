@@ -7,6 +7,13 @@ RETURNING *;
 
 -- TODO: GetSocRoleInSociety :one
 
+-- locks the role row so concurrent handovers of the same role run one at a
+-- time. NO KEY UPDATE still lets memberships FK checks through
+-- name: LockSocRoleInSociety :one
+SELECT id FROM socroles
+WHERE id = sqlc.arg('role_id') AND soc_id = sqlc.arg('soc_id')
+FOR NO KEY UPDATE;
+
 -- TODO: ListSocRolesBySociety :many
 
 -- TODO: UpdateSocRole :one

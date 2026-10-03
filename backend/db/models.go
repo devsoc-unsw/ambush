@@ -116,6 +116,8 @@ type Membership struct {
 	RoleID    int32
 	UserID    pgtype.UUID
 	CreatedAt pgtype.Timestamptz
+	EndedAt   pgtype.Timestamptz
+	Term      pgtype.Text
 }
 
 type Society struct {

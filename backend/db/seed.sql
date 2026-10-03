@@ -28,4 +28,4 @@ FROM socroles r
 JOIN societies s ON s.id = r.soc_id
 WHERE (s.slug, r.name) IN (('seed-society', 'Projects Team'),
                             ('other-society', 'Member'))
-ON CONFLICT (role_id, user_id) DO NOTHING;
+ON CONFLICT (role_id, user_id) WHERE ended_at IS NULL DO NOTHING;

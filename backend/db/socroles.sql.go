@@ -36,3 +36,27 @@ func (q *Queries) CreateSocRole(ctx context.Context, arg CreateSocRoleParams) (S
 	)
 	return i, err
 }
+
+const lockSocRoleInSociety = `-- name: LockSocRoleInSociety :one
+
+
+SELECT id FROM socroles
+WHERE id = $1 AND soc_id = $2
+FOR NO KEY UPDATE
+`
+
+type LockSocRoleInSocietyParams struct {
+	RoleID int32
+	SocID  int32
+}
+
+// TODO: GetSocRole :one
+// TODO: GetSocRoleInSociety :one
+// locks the role row so concurrent handovers of the same role run one at a
+// time. NO KEY UPDATE still lets memberships FK checks through
+func (q *Queries) LockSocRoleInSociety(ctx context.Context, arg LockSocRoleInSocietyParams) (int32, error) {
+	row := q.db.QueryRow(ctx, lockSocRoleInSociety, arg.RoleID, arg.SocID)
+	var id int32
+	err := row.Scan(&id)
+	return id, err
+}

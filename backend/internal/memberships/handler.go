@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"strconv"
 
 	"github.com/google/uuid"
 )
@@ -73,7 +72,7 @@ func (h *Handler) createMembership(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) assignMemberships(w http.ResponseWriter, r *http.Request) {
 	// TODO: authz, caller must be a SocietyAdmin of society_id
-	societyID, ok := pathID(r, "society_id")
+	societyID, ok := httpx.PathID(r, "society_id")
 	if !ok {
 		httpx.WriteError(w, http.StatusBadRequest, "invalid society id")
 		return
@@ -121,23 +120,14 @@ func (h *Handler) assignMemberships(w http.ResponseWriter, r *http.Request) {
 		map[string]int{"created": res.Created, "skipped": res.Skipped})
 }
 
-// parses a positive int32 path value like {society_id}
-func pathID(r *http.Request, name string) (int32, bool) {
-	id, err := strconv.ParseInt(r.PathValue(name), 10, 32)
-	if err != nil || id <= 0 {
-		return 0, false
-	}
-	return int32(id), true
-}
-
 func (h *Handler) handoverRole(w http.ResponseWriter, r *http.Request) {
 	// TODO: authz, caller must be a SocietyAdmin of society_id
-	societyID, ok := pathID(r, "society_id")
+	societyID, ok := httpx.PathID(r, "society_id")
 	if !ok {
 		httpx.WriteError(w, http.StatusBadRequest, "invalid society id")
 		return
 	}
-	roleID, ok := pathID(r, "role_id")
+	roleID, ok := httpx.PathID(r, "role_id")
 	if !ok {
 		httpx.WriteError(w, http.StatusBadRequest, "invalid role id")
 		return

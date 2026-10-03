@@ -2,10 +2,20 @@ package societies
 
 import (
 	"backend/db"
+	"backend/internal/pgerr"
 	"context"
+	"errors"
 	"fmt"
+	"time"
 
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
+)
+
+var (
+	ErrSocietyNotFound = errors.New("society not found")
+	ErrSlugTaken       = errors.New("slug already taken")
 )
 
 type Service struct {
@@ -33,8 +43,9 @@ func (s *Service) CreateSociety(ctx context.Context, in NewSociety) (int32, erro
 
 	soc, err := q.CreateSociety(ctx,
 		db.CreateSocietyParams{Name: in.Name, Slug: in.Slug})
-	// TODO: err for inserting using a taken slug
-	// NOTE: should return a pg errcode 23505
+	if pgerr.IsUniqueViolation(err) {
+		return 0, ErrSlugTaken
+	}
 	if err != nil {
 		return 0, fmt.Errorf("create society: %w", err)
 	}
@@ -47,4 +58,49 @@ func (s *Service) CreateSociety(ctx context.Context, in NewSociety) (int32, erro
 	}
 
 	return soc.ID, nil
+}
+
+type Society struct {
+	ID        int32
+	Name      string
+	Slug      string
+	CreatedAt time.Time
+	UpdatedAt time.Time
+}
+
+// nil fields are left unchanged
+type SocietyUpdate struct {
+	Name *string
+	Slug *string
+}
+
+func (s *Service) UpdateSociety(
+	ctx context.Context, id int32, in SocietyUpdate,
+) (Society, error) {
+	params := db.UpdateSocietyParams{ID: id}
+	if in.Name != nil {
+		params.Name = pgtype.Text{String: *in.Name, Valid: true}
+	}
+	if in.Slug != nil {
+		params.Slug = pgtype.Text{String: *in.Slug, Valid: true}
+	}
+
+	soc, err := s.q.UpdateSociety(ctx, params)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return Society{}, ErrSocietyNotFound
+	}
+	if pgerr.IsUniqueViolation(err) {
+		return Society{}, ErrSlugTaken
+	}
+	if err != nil {
+		return Society{}, fmt.Errorf("update society: %w", err)
+	}
+
+	return Society{
+		ID:        soc.ID,
+		Name:      soc.Name,
+		Slug:      soc.Slug,
+		CreatedAt: soc.CreatedAt.Time,
+		UpdatedAt: soc.UpdatedAt.Time,
+	}, nil
 }

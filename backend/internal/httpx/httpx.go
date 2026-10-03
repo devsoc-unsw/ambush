@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"strconv"
 )
 
 func WriteJSON(w http.ResponseWriter, status int, v any) {
@@ -16,4 +17,13 @@ func WriteJSON(w http.ResponseWriter, status int, v any) {
 
 func WriteError(w http.ResponseWriter, status int, msg string) {
 	WriteJSON(w, status, map[string]string{"error": msg})
+}
+
+// PathID parses a positive int32 path value like {society_id}.
+func PathID(r *http.Request, name string) (int32, bool) {
+	id, err := strconv.ParseInt(r.PathValue(name), 10, 32)
+	if err != nil || id <= 0 {
+		return 0, false
+	}
+	return int32(id), true
 }

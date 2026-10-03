@@ -2,13 +2,13 @@ package memberships
 
 import (
 	"backend/db"
+	"backend/internal/pgerr"
 	"context"
 	"errors"
 	"fmt"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -19,14 +19,6 @@ var (
 	ErrAlreadyMember          = errors.New("user already holds this role")
 	ErrPreviousHolderNotFound = errors.New("previous user does not hold this role")
 )
-
-// postgres unique_violation
-const pgUniqueViolation = "23505"
-
-func isUniqueViolation(err error) bool {
-	var pgErr *pgconn.PgError
-	return errors.As(err, &pgErr) && pgErr.Code == pgUniqueViolation
-}
 
 type Service struct {
 	pool *pgxpool.Pool
@@ -66,7 +58,7 @@ func (s *Service) CreateMembership(
 	if errors.Is(err, pgx.ErrNoRows) {
 		return 0, ErrRoleNotInSociety
 	}
-	if isUniqueViolation(err) {
+	if pgerr.IsUniqueViolation(err) {
 		return 0, ErrAlreadyMember
 	}
 	if err != nil {
@@ -184,7 +176,7 @@ func (s *Service) HandoverRole(
 		SocID:  in.SocietyID,
 	})
 	// only possible when the new user is a current holder who wasn't ended
-	if isUniqueViolation(err) {
+	if pgerr.IsUniqueViolation(err) {
 		return HandoverResult{}, ErrAlreadyMember
 	}
 	if err != nil {

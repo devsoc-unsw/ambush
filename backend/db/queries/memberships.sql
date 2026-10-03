@@ -8,6 +8,17 @@ RETURNING *;
 
 -- TODO: GetMembership :one
 
+-- name: CreateMemberships :many
+INSERT INTO memberships (role_id, user_id)
+SELECT r.id, u.user_id
+FROM (
+    SELECT unnest(sqlc.arg('role_ids')::int[])  AS role_id,
+           unnest(sqlc.arg('user_ids')::uuid[]) AS user_id
+) AS u
+JOIN socroles r ON r.id = u.role_id AND r.soc_id = sqlc.arg('soc_id')
+ON CONFLICT (role_id, user_id) DO NOTHING
+RETURNING *;
+
 -- TODO: ListMembershipsBySociety :many
 
 -- TODO: ListMembershipsByRole :many

@@ -3,7 +3,9 @@ INSERT INTO societies (name, slug)
 VALUES ($1, $2)
 RETURNING *;
 
--- TODO: GetSociety :one
+-- name: GetSociety :one
+SELECT * FROM societies
+WHERE id = $1;
 
 -- TODO: GetSocietyBySlug :one
 

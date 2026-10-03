@@ -38,8 +38,52 @@ func (q *Queries) CreateMembership(ctx context.Context, arg CreateMembershipPara
 	return i, err
 }
 
-const listUserPortfolios = `-- name: ListUserPortfolios :many
+const createMemberships = `-- name: CreateMemberships :many
 
+INSERT INTO memberships (role_id, user_id)
+SELECT r.id, u.user_id
+FROM (
+    SELECT unnest($1::int[])  AS role_id,
+           unnest($2::uuid[]) AS user_id
+) AS u
+JOIN socroles r ON r.id = u.role_id AND r.soc_id = $3
+ON CONFLICT (role_id, user_id) DO NOTHING
+RETURNING id, role_id, user_id, created_at
+`
+
+type CreateMembershipsParams struct {
+	RoleIds []int32
+	UserIds []pgtype.UUID
+	SocID   int32
+}
+
+// TODO: GetMembership :one
+func (q *Queries) CreateMemberships(ctx context.Context, arg CreateMembershipsParams) ([]Membership, error) {
+	rows, err := q.db.Query(ctx, createMemberships, arg.RoleIds, arg.UserIds, arg.SocID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Membership
+	for rows.Next() {
+		var i Membership
+		if err := rows.Scan(
+			&i.ID,
+			&i.RoleID,
+			&i.UserID,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listUserPortfolios = `-- name: ListUserPortfolios :many
 
 
 SELECT
@@ -69,7 +113,6 @@ type ListUserPortfoliosRow struct {
 	SocietySlug      string
 }
 
-// TODO: GetMembership :one
 // TODO: ListMembershipsBySociety :many
 // TODO: ListMembershipsByRole :many
 // "given a person, which portfolios are they part of?"

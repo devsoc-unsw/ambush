@@ -35,8 +35,25 @@ func (q *Queries) CreateSociety(ctx context.Context, arg CreateSocietyParams) (S
 	return i, err
 }
 
-const updateSociety = `-- name: UpdateSociety :one
+const getSociety = `-- name: GetSociety :one
+SELECT id, name, slug, created_at, updated_at FROM societies
+WHERE id = $1
+`
 
+func (q *Queries) GetSociety(ctx context.Context, id int32) (Society, error) {
+	row := q.db.QueryRow(ctx, getSociety, id)
+	var i Society
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Slug,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const updateSociety = `-- name: UpdateSociety :one
 
 
 UPDATE societies
@@ -53,7 +70,6 @@ type UpdateSocietyParams struct {
 	ID   int32
 }
 
-// TODO: GetSociety :one
 // TODO: GetSocietyBySlug :one
 // TODO: ListSocieties :many
 func (q *Queries) UpdateSociety(ctx context.Context, arg UpdateSocietyParams) (Society, error) {

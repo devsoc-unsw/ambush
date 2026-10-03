@@ -3,6 +3,7 @@ package socroles
 import (
 	"backend/internal/httpx"
 	"encoding/json"
+	"errors"
 	"log"
 	"net/http"
 )
@@ -43,6 +44,10 @@ func (h *Handler) createSocRole(w http.ResponseWriter, r *http.Request) {
 		ParentRoleID: body.ParentRoleID,
 		Name:         body.Name,
 	})
+	if errors.Is(err, ErrSocietyNotFound) {
+		httpx.WriteError(w, http.StatusNotFound, "society not found")
+		return
+	}
 	if err != nil {
 		log.Printf("create socrole: %v", err)
 		httpx.WriteError(w, http.StatusInternalServerError,

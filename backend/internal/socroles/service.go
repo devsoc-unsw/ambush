@@ -3,11 +3,15 @@ package socroles
 import (
 	"backend/db"
 	"context"
+	"errors"
 	"fmt"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
+
+var ErrSocietyNotFound = errors.New("society not found")
 
 type Service struct {
 	q *db.Queries
@@ -32,6 +36,11 @@ func (s *Service) CreateSocRole(
 	}
 
 	socrole, err := s.q.CreateSocRole(ctx, params)
+	// the insert selects from societies, so no row back means the society is
+	// missing or archived
+	if errors.Is(err, pgx.ErrNoRows) {
+		return 0, ErrSocietyNotFound
+	}
 	if err != nil {
 		return 0, fmt.Errorf("create socrole: %w", err)
 	}

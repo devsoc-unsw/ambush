@@ -61,11 +61,26 @@ func (s *Service) CreateSociety(ctx context.Context, in NewSociety) (int32, erro
 }
 
 type Society struct {
-	ID        int32
-	Name      string
-	Slug      string
-	CreatedAt time.Time
-	UpdatedAt time.Time
+	ID         int32
+	Name       string
+	Slug       string
+	CreatedAt  time.Time
+	UpdatedAt  time.Time
+	ArchivedAt *time.Time // nil = active
+}
+
+func toSociety(soc db.Society) Society {
+	out := Society{
+		ID:        soc.ID,
+		Name:      soc.Name,
+		Slug:      soc.Slug,
+		CreatedAt: soc.CreatedAt.Time,
+		UpdatedAt: soc.UpdatedAt.Time,
+	}
+	if soc.ArchivedAt.Valid {
+		out.ArchivedAt = &soc.ArchivedAt.Time
+	}
+	return out
 }
 
 // nil fields are left unchanged
@@ -86,6 +101,7 @@ func (s *Service) UpdateSociety(
 	}
 
 	soc, err := s.q.UpdateSociety(ctx, params)
+	// archived societies are read only, so they're not found here too
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Society{}, ErrSocietyNotFound
 	}
@@ -96,11 +112,18 @@ func (s *Service) UpdateSociety(
 		return Society{}, fmt.Errorf("update society: %w", err)
 	}
 
-	return Society{
-		ID:        soc.ID,
-		Name:      soc.Name,
-		Slug:      soc.Slug,
-		CreatedAt: soc.CreatedAt.Time,
-		UpdatedAt: soc.UpdatedAt.Time,
-	}, nil
+	return toSociety(soc), nil
+}
+
+// ArchiveSociety makes a society read only. Archiving it again is a no-op.
+func (s *Service) ArchiveSociety(ctx context.Context, id int32) (Society, error) {
+	soc, err := s.q.ArchiveSociety(ctx, id)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return Society{}, ErrSocietyNotFound
+	}
+	if err != nil {
+		return Society{}, fmt.Errorf("archive society: %w", err)
+	}
+
+	return toSociety(soc), nil
 }

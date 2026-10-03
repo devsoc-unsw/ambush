@@ -3,6 +3,7 @@
 INSERT INTO memberships (role_id, user_id, term)
 SELECT r.id, sqlc.arg('user_id'), sqlc.narg('term')::text
 FROM socroles r
+JOIN societies s ON s.id = r.soc_id AND s.archived_at IS NULL
 WHERE r.id = sqlc.arg('role_id') AND r.soc_id = sqlc.arg('soc_id')
 RETURNING *;
 
@@ -16,6 +17,7 @@ FROM (
            unnest(sqlc.arg('user_ids')::uuid[]) AS user_id
 ) AS u
 JOIN socroles r ON r.id = u.role_id AND r.soc_id = sqlc.arg('soc_id')
+JOIN societies s ON s.id = r.soc_id AND s.archived_at IS NULL
 -- the WHERE has to match the partial unique index for postgres to find it
 ON CONFLICT (role_id, user_id) WHERE ended_at IS NULL DO NOTHING
 RETURNING *;
@@ -38,7 +40,7 @@ SELECT
 FROM memberships m
 JOIN socroles r ON r.id = m.role_id
 JOIN societies s ON s.id = r.soc_id
-WHERE m.user_id = $1 AND m.ended_at IS NULL
+WHERE m.user_id = $1 AND m.ended_at IS NULL AND s.archived_at IS NULL
 ORDER BY s.name, r.name;
 
 -- TODO: GetUserMembershipInSociety :one

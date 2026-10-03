@@ -20,6 +20,7 @@ func NewHandler(svc *Service) *Handler {
 func (h *Handler) Routes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /societies", h.createSociety)
 	mux.HandleFunc("PATCH /societies/{society_id}", h.updateSociety)
+	mux.HandleFunc("POST /societies/{society_id}/archive", h.archiveSociety)
 }
 
 func (h *Handler) createSociety(w http.ResponseWriter, r *http.Request) {
@@ -97,10 +98,34 @@ func (h *Handler) updateSociety(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func (h *Handler) archiveSociety(w http.ResponseWriter, r *http.Request) {
+	// TODO: authz, caller must be a SocietyAdmin of society_id
+	id, ok := httpx.PathID(r, "society_id")
+	if !ok {
+		httpx.WriteError(w, http.StatusBadRequest, "invalid society id")
+		return
+	}
+
+	soc, err := h.svc.ArchiveSociety(r.Context(), id)
+	if errors.Is(err, ErrSocietyNotFound) {
+		httpx.WriteError(w, http.StatusNotFound, "society not found")
+		return
+	}
+	if err != nil {
+		log.Printf("archive society: %v", err)
+		httpx.WriteError(w, http.StatusInternalServerError,
+			"could not archive society")
+		return
+	}
+
+	httpx.WriteJSON(w, http.StatusOK, societyJSON(soc))
+}
+
 type societyJSON struct {
-	ID        int32     `json:"id"`
-	Name      string    `json:"name"`
-	Slug      string    `json:"slug"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
+	ID         int32      `json:"id"`
+	Name       string     `json:"name"`
+	Slug       string     `json:"slug"`
+	CreatedAt  time.Time  `json:"created_at"`
+	UpdatedAt  time.Time  `json:"updated_at"`
+	ArchivedAt *time.Time `json:"archived_at"`
 }

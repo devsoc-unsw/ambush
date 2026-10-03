@@ -15,6 +15,7 @@ const createMembership = `-- name: CreateMembership :one
 INSERT INTO memberships (role_id, user_id, term)
 SELECT r.id, $1, $2::text
 FROM socroles r
+JOIN societies s ON s.id = r.soc_id AND s.archived_at IS NULL
 WHERE r.id = $3 AND r.soc_id = $4
 RETURNING id, role_id, user_id, created_at, ended_at, term
 `
@@ -55,6 +56,7 @@ FROM (
            unnest($2::uuid[]) AS user_id
 ) AS u
 JOIN socroles r ON r.id = u.role_id AND r.soc_id = $3
+JOIN societies s ON s.id = r.soc_id AND s.archived_at IS NULL
 ON CONFLICT (role_id, user_id) WHERE ended_at IS NULL DO NOTHING
 RETURNING id, role_id, user_id, created_at, ended_at, term
 `
@@ -146,7 +148,7 @@ SELECT
 FROM memberships m
 JOIN socroles r ON r.id = m.role_id
 JOIN societies s ON s.id = r.soc_id
-WHERE m.user_id = $1 AND m.ended_at IS NULL
+WHERE m.user_id = $1 AND m.ended_at IS NULL AND s.archived_at IS NULL
 ORDER BY s.name, r.name
 `
 

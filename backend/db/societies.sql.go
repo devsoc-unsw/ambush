@@ -11,10 +11,32 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const archiveSociety = `-- name: ArchiveSociety :one
+UPDATE societies
+SET archived_at = COALESCE(archived_at, now())
+WHERE id = $1
+RETURNING id, name, slug, created_at, updated_at, archived_at
+`
+
+// COALESCE keeps the original time, so archiving twice is a no-op
+func (q *Queries) ArchiveSociety(ctx context.Context, id int32) (Society, error) {
+	row := q.db.QueryRow(ctx, archiveSociety, id)
+	var i Society
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Slug,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.ArchivedAt,
+	)
+	return i, err
+}
+
 const createSociety = `-- name: CreateSociety :one
 INSERT INTO societies (name, slug)
 VALUES ($1, $2)
-RETURNING id, name, slug, created_at, updated_at
+RETURNING id, name, slug, created_at, updated_at, archived_at
 `
 
 type CreateSocietyParams struct {
@@ -31,12 +53,13 @@ func (q *Queries) CreateSociety(ctx context.Context, arg CreateSocietyParams) (S
 		&i.Slug,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.ArchivedAt,
 	)
 	return i, err
 }
 
 const getSociety = `-- name: GetSociety :one
-SELECT id, name, slug, created_at, updated_at FROM societies
+SELECT id, name, slug, created_at, updated_at, archived_at FROM societies
 WHERE id = $1
 `
 
@@ -49,6 +72,7 @@ func (q *Queries) GetSociety(ctx context.Context, id int32) (Society, error) {
 		&i.Slug,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.ArchivedAt,
 	)
 	return i, err
 }
@@ -60,8 +84,8 @@ UPDATE societies
 SET name = COALESCE($1, name),
     slug = COALESCE($2, slug),
     updated_at = now()
-WHERE id = $3
-RETURNING id, name, slug, created_at, updated_at
+WHERE id = $3 AND archived_at IS NULL
+RETURNING id, name, slug, created_at, updated_at, archived_at
 `
 
 type UpdateSocietyParams struct {
@@ -81,6 +105,7 @@ func (q *Queries) UpdateSociety(ctx context.Context, arg UpdateSocietyParams) (S
 		&i.Slug,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.ArchivedAt,
 	)
 	return i, err
 }

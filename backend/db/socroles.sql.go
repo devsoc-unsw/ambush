@@ -13,18 +13,21 @@ import (
 
 const createSocRole = `-- name: CreateSocRole :one
 INSERT INTO socroles (soc_id, parent_role_id, name)
-VALUES ($1, $2, $3)
+SELECT s.id, $1::int, $2::text
+FROM societies s
+WHERE s.id = $3 AND s.archived_at IS NULL
 RETURNING id, soc_id, parent_role_id, name, created_at, updated_at
 `
 
 type CreateSocRoleParams struct {
-	SocID        int32
 	ParentRoleID pgtype.Int4
 	Name         string
+	SocID        int32
 }
 
+// selects from societies so nothing is inserted for a missing or archived one
 func (q *Queries) CreateSocRole(ctx context.Context, arg CreateSocRoleParams) (Socrole, error) {
-	row := q.db.QueryRow(ctx, createSocRole, arg.SocID, arg.ParentRoleID, arg.Name)
+	row := q.db.QueryRow(ctx, createSocRole, arg.ParentRoleID, arg.Name, arg.SocID)
 	var i Socrole
 	err := row.Scan(
 		&i.ID,
@@ -40,9 +43,10 @@ func (q *Queries) CreateSocRole(ctx context.Context, arg CreateSocRoleParams) (S
 const lockSocRoleInSociety = `-- name: LockSocRoleInSociety :one
 
 
-SELECT id FROM socroles
-WHERE id = $1 AND soc_id = $2
-FOR NO KEY UPDATE
+SELECT r.id FROM socroles r
+JOIN societies s ON s.id = r.soc_id AND s.archived_at IS NULL
+WHERE r.id = $1 AND r.soc_id = $2
+FOR NO KEY UPDATE OF r
 `
 
 type LockSocRoleInSocietyParams struct {

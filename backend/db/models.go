@@ -121,11 +121,12 @@ type Membership struct {
 }
 
 type Society struct {
-	ID        int32
-	Name      string
-	Slug      string
-	CreatedAt pgtype.Timestamptz
-	UpdatedAt pgtype.Timestamptz
+	ID         int32
+	Name       string
+	Slug       string
+	CreatedAt  pgtype.Timestamptz
+	UpdatedAt  pgtype.Timestamptz
+	ArchivedAt pgtype.Timestamptz
 }
 
 type Socrole struct {

@@ -105,8 +105,8 @@ func (s *Service) AssignMemberships(
 	// nothing created could mean the society doesn't exist. only check then,
 	// since any created row already proves it does
 	if len(rows) == 0 {
-		_, err = s.q.GetSociety(ctx, societyID)
-		if errors.Is(err, pgx.ErrNoRows) {
+		soc, err := s.q.GetSociety(ctx, societyID)
+		if errors.Is(err, pgx.ErrNoRows) || soc.ArchivedAt.Valid {
 			return AssignResult{}, ErrSocietyNotFound
 		}
 		if err != nil {

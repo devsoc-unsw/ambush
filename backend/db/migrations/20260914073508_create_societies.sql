@@ -4,7 +4,8 @@ CREATE TABLE societies (
     name        TEXT NOT NULL,
     slug        TEXT NOT NULL UNIQUE,
     created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+    updated_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+    archived_at TIMESTAMPTZ     -- NULL = active. archived societies are read only
 );
 
 

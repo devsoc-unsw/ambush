@@ -7,12 +7,22 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/google/uuid"
 )
 
 type Handler struct {
 	svc *Service
+}
+
+type membershipJSON struct {
+	ID       int32      `json:"id"`
+	RoleID   int32      `json:"role_id"`
+	UserID   uuid.UUID  `json:"user_id"`
+	Term     *string    `json:"term"`
+	JoinedAt time.Time  `json:"joined_at"`
+	EndedAt  *time.Time `json:"ended_at"`
 }
 
 func NewHandler(svc *Service) *Handler {
@@ -25,6 +35,8 @@ func (h *Handler) Routes(mux *http.ServeMux) {
 		h.assignMemberships)
 	mux.HandleFunc("POST /societies/{society_id}/roles/{role_id}/handover",
 		h.handoverRole)
+	mux.HandleFunc("POST /societies/{society_id}/memberships/{membership_id}/archive",
+		h.archiveMembership)
 }
 
 // caps how many rows one request can insert
@@ -175,4 +187,33 @@ func (h *Handler) handoverRole(w http.ResponseWriter, r *http.Request) {
 			"ended":         res.Ended,
 		})
 	}
+}
+
+func (h *Handler) archiveMembership(w http.ResponseWriter, r *http.Request) {
+	// TODO: authz, caller must be a SocietyAdmin of society_id
+	societyID, ok := httpx.PathID(r, "society_id")
+	if !ok {
+		httpx.WriteError(w, http.StatusBadRequest, "invalid society id")
+		return
+	}
+	membershipID, ok := httpx.PathID(r, "membership_id")
+	if !ok {
+		httpx.WriteError(w, http.StatusBadRequest, "invalid membership id")
+		return
+	}
+
+	m, err := h.svc.ArchiveMembership(r.Context(), societyID, membershipID)
+	if errors.Is(err, ErrMembershipNotFound) {
+		httpx.WriteError(w, http.StatusNotFound, "membership not found")
+		return
+	}
+	if err != nil {
+		log.Printf("archive membership: %v", err)
+		httpx.WriteError(w, http.StatusInternalServerError,
+			"could not archive membership")
+		return
+	}
+
+	// same fields as Membership, so a conversion just adds the json tags
+	httpx.WriteJSON(w, http.StatusOK, membershipJSON(m))
 }

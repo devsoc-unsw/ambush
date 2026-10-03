@@ -54,4 +54,15 @@ WHERE role_id = sqlc.arg('role_id')
   AND (sqlc.narg('user_id')::uuid IS NULL OR user_id = sqlc.narg('user_id'))
 RETURNING id;
 
--- TODO: DeleteMembership :exec
+-- ends a membership. COALESCE keeps the original time, so archiving twice is
+-- a no-op. joining through socroles scopes it to the society in the path, and
+-- archived societies are read only
+-- name: ArchiveMembership :one
+UPDATE memberships m
+SET ended_at = COALESCE(m.ended_at, now())
+FROM socroles r
+JOIN societies s ON s.id = r.soc_id AND s.archived_at IS NULL
+WHERE m.id = sqlc.arg('membership_id')
+  AND r.id = m.role_id
+  AND r.soc_id = sqlc.arg('soc_id')
+RETURNING m.*;

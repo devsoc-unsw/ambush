@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -18,6 +19,7 @@ var (
 	ErrSocietyNotFound        = errors.New("society not found")
 	ErrAlreadyMember          = errors.New("user already holds this role")
 	ErrPreviousHolderNotFound = errors.New("previous user does not hold this role")
+	ErrMembershipNotFound     = errors.New("membership not found")
 )
 
 type Service struct {
@@ -43,6 +45,15 @@ type MembershipPair struct {
 type AssignResult struct {
 	Created int
 	Skipped int
+}
+
+type Membership struct {
+	ID       int32
+	RoleID   int32
+	UserID   uuid.UUID
+	Term     *string
+	JoinedAt time.Time
+	EndedAt  *time.Time // nil = still current
 }
 
 func (s *Service) CreateMembership(
@@ -189,4 +200,39 @@ func (s *Service) HandoverRole(
 	}
 
 	return HandoverResult{MembershipID: m.ID, Ended: len(ended)}, nil
+}
+func toMembership(m db.Membership) Membership {
+	out := Membership{
+		ID:       m.ID,
+		RoleID:   m.RoleID,
+		UserID:   uuid.UUID(m.UserID.Bytes),
+		JoinedAt: m.CreatedAt.Time,
+	}
+	if m.Term.Valid {
+		out.Term = &m.Term.String
+	}
+	if m.EndedAt.Valid {
+		out.EndedAt = &m.EndedAt.Time
+	}
+	return out
+}
+
+// ArchiveMembership ends a membership. Archiving it again is a no-op.
+func (s *Service) ArchiveMembership(
+	ctx context.Context, societyID, membershipID int32,
+) (Membership, error) {
+	m, err := s.q.ArchiveMembership(ctx, db.ArchiveMembershipParams{
+		MembershipID: membershipID,
+		SocID:        societyID,
+	})
+	// no row back covers a missing membership, one from another society, and
+	// an archived society
+	if errors.Is(err, pgx.ErrNoRows) {
+		return Membership{}, ErrMembershipNotFound
+	}
+	if err != nil {
+		return Membership{}, fmt.Errorf("archive membership: %w", err)
+	}
+
+	return toMembership(m), nil
 }

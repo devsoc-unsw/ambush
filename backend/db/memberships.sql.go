@@ -11,6 +11,39 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const archiveMembership = `-- name: ArchiveMembership :one
+UPDATE memberships m
+SET ended_at = COALESCE(m.ended_at, now())
+FROM socroles r
+JOIN societies s ON s.id = r.soc_id AND s.archived_at IS NULL
+WHERE m.id = $1
+  AND r.id = m.role_id
+  AND r.soc_id = $2
+RETURNING m.id, m.role_id, m.user_id, m.created_at, m.ended_at, m.term
+`
+
+type ArchiveMembershipParams struct {
+	MembershipID int32
+	SocID        int32
+}
+
+// ends a membership. COALESCE keeps the original time, so archiving twice is
+// a no-op. joining through socroles scopes it to the society in the path, and
+// archived societies are read only
+func (q *Queries) ArchiveMembership(ctx context.Context, arg ArchiveMembershipParams) (Membership, error) {
+	row := q.db.QueryRow(ctx, archiveMembership, arg.MembershipID, arg.SocID)
+	var i Membership
+	err := row.Scan(
+		&i.ID,
+		&i.RoleID,
+		&i.UserID,
+		&i.CreatedAt,
+		&i.EndedAt,
+		&i.Term,
+	)
+	return i, err
+}
+
 const createMembership = `-- name: CreateMembership :one
 INSERT INTO memberships (role_id, user_id, term)
 SELECT r.id, $1, $2::text

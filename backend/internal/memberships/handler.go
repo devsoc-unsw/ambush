@@ -17,8 +17,8 @@ type Handler struct {
 }
 
 type membershipJSON struct {
-	ID       int32      `json:"id"`
-	RoleID   int32      `json:"role_id"`
+	ID       uuid.UUID  `json:"id"`
+	RoleID   uuid.UUID  `json:"role_id"`
 	UserID   uuid.UUID  `json:"user_id"`
 	Term     *string    `json:"term"`
 	JoinedAt time.Time  `json:"joined_at"`
@@ -31,11 +31,10 @@ func NewHandler(svc *Service) *Handler {
 
 func (h *Handler) Routes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /memberships", h.createMembership)
-	mux.HandleFunc("POST /societies/{society_id}/memberships",
-		h.assignMemberships)
-	mux.HandleFunc("POST /societies/{society_id}/roles/{role_id}/handover",
+	mux.HandleFunc("POST /orgs/{org_id}/memberships", h.assignMemberships)
+	mux.HandleFunc("POST /orgs/{org_id}/roles/{role_id}/handover",
 		h.handoverRole)
-	mux.HandleFunc("POST /societies/{society_id}/memberships/{membership_id}/archive",
+	mux.HandleFunc("POST /orgs/{org_id}/memberships/{membership_id}/archive",
 		h.archiveMembership)
 }
 
@@ -44,27 +43,27 @@ const maxAssignBatch = 500
 
 func (h *Handler) createMembership(w http.ResponseWriter, r *http.Request) {
 	var body struct {
-		SocietyID int32     `json:"society_id"`
-		RoleID    int32     `json:"role_id"`
-		UserID    uuid.UUID `json:"user_id"`
+		OrgID  uuid.UUID `json:"org_id"`
+		RoleID uuid.UUID `json:"role_id"`
+		UserID uuid.UUID `json:"user_id"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		httpx.WriteError(w, http.StatusBadRequest, "malformed json body")
 		return
 	}
-	if body.SocietyID <= 0 || body.RoleID <= 0 || body.UserID == uuid.Nil {
+	if body.OrgID == uuid.Nil || body.RoleID == uuid.Nil || body.UserID == uuid.Nil {
 		httpx.WriteError(w, http.StatusBadRequest,
-			"society_id, role_id and user_id required")
+			"org_id, role_id and user_id required")
 		return
 	}
 
 	id, err := h.svc.CreateMembership(r.Context(), NewMembership{
-		SocietyID: body.SocietyID,
-		RoleID:    body.RoleID,
-		UserID:    body.UserID,
+		OrgID:  body.OrgID,
+		RoleID: body.RoleID,
+		UserID: body.UserID,
 	})
-	if errors.Is(err, ErrRoleNotInSociety) {
-		httpx.WriteError(w, http.StatusNotFound, "role not found in society")
+	if errors.Is(err, ErrRoleNotInOrg) {
+		httpx.WriteError(w, http.StatusNotFound, "role not found in org")
 		return
 	}
 	if errors.Is(err, ErrAlreadyMember) {
@@ -79,20 +78,20 @@ func (h *Handler) createMembership(w http.ResponseWriter, r *http.Request) {
 	}
 
 	httpx.WriteJSON(w, http.StatusCreated,
-		map[string]int32{"membership_id": id})
+		map[string]uuid.UUID{"membership_id": id})
 }
 
 func (h *Handler) assignMemberships(w http.ResponseWriter, r *http.Request) {
-	// TODO: authz, caller must be a SocietyAdmin of society_id
-	societyID, ok := httpx.PathID(r, "society_id")
+	// TODO: authz, caller must lead the role's team or one of its ancestors
+	orgID, ok := httpx.PathUUID(r, "org_id")
 	if !ok {
-		httpx.WriteError(w, http.StatusBadRequest, "invalid society id")
+		httpx.WriteError(w, http.StatusBadRequest, "invalid org id")
 		return
 	}
 
 	var body struct {
 		Memberships []struct {
-			RoleID int32     `json:"role_id"`
+			RoleID uuid.UUID `json:"role_id"`
 			UserID uuid.UUID `json:"user_id"`
 		} `json:"memberships"`
 	}
@@ -108,7 +107,7 @@ func (h *Handler) assignMemberships(w http.ResponseWriter, r *http.Request) {
 
 	pairs := make([]MembershipPair, len(body.Memberships))
 	for i, m := range body.Memberships {
-		if m.RoleID <= 0 || m.UserID == uuid.Nil {
+		if m.RoleID == uuid.Nil || m.UserID == uuid.Nil {
 			httpx.WriteError(w, http.StatusBadRequest,
 				fmt.Sprintf("memberships[%d]: role_id and user_id required", i))
 			return
@@ -116,9 +115,9 @@ func (h *Handler) assignMemberships(w http.ResponseWriter, r *http.Request) {
 		pairs[i] = MembershipPair{RoleID: m.RoleID, UserID: m.UserID}
 	}
 
-	res, err := h.svc.AssignMemberships(r.Context(), societyID, pairs)
-	if errors.Is(err, ErrSocietyNotFound) {
-		httpx.WriteError(w, http.StatusNotFound, "society not found")
+	res, err := h.svc.AssignMemberships(r.Context(), orgID, pairs)
+	if errors.Is(err, ErrOrgNotFound) {
+		httpx.WriteError(w, http.StatusNotFound, "org not found")
 		return
 	}
 	if err != nil {
@@ -133,13 +132,13 @@ func (h *Handler) assignMemberships(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) handoverRole(w http.ResponseWriter, r *http.Request) {
-	// TODO: authz, caller must be a SocietyAdmin of society_id
-	societyID, ok := httpx.PathID(r, "society_id")
+	// TODO: authz, caller must lead the role's team or one of its ancestors
+	orgID, ok := httpx.PathUUID(r, "org_id")
 	if !ok {
-		httpx.WriteError(w, http.StatusBadRequest, "invalid society id")
+		httpx.WriteError(w, http.StatusBadRequest, "invalid org id")
 		return
 	}
-	roleID, ok := httpx.PathID(r, "role_id")
+	roleID, ok := httpx.PathUUID(r, "role_id")
 	if !ok {
 		httpx.WriteError(w, http.StatusBadRequest, "invalid role id")
 		return
@@ -163,15 +162,15 @@ func (h *Handler) handoverRole(w http.ResponseWriter, r *http.Request) {
 	}
 
 	res, err := h.svc.HandoverRole(r.Context(), Handover{
-		SocietyID:      societyID,
+		OrgID:          orgID,
 		RoleID:         roleID,
 		NewUserID:      body.NewUserID,
 		PreviousUserID: body.PreviousUserID,
 		Term:           body.Term,
 	})
 	switch {
-	case errors.Is(err, ErrRoleNotInSociety):
-		httpx.WriteError(w, http.StatusNotFound, "role not found in society")
+	case errors.Is(err, ErrRoleNotInOrg):
+		httpx.WriteError(w, http.StatusNotFound, "role not found in org")
 	case errors.Is(err, ErrPreviousHolderNotFound):
 		httpx.WriteError(w, http.StatusNotFound,
 			"previous user does not hold this role")
@@ -182,27 +181,27 @@ func (h *Handler) handoverRole(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusInternalServerError,
 			"could not hand over role")
 	default:
-		httpx.WriteJSON(w, http.StatusOK, map[string]int{
-			"membership_id": int(res.MembershipID),
+		httpx.WriteJSON(w, http.StatusOK, map[string]any{
+			"membership_id": res.MembershipID,
 			"ended":         res.Ended,
 		})
 	}
 }
 
 func (h *Handler) archiveMembership(w http.ResponseWriter, r *http.Request) {
-	// TODO: authz, caller must be a SocietyAdmin of society_id
-	societyID, ok := httpx.PathID(r, "society_id")
+	// TODO: authz, caller must lead the role's team or one of its ancestors
+	orgID, ok := httpx.PathUUID(r, "org_id")
 	if !ok {
-		httpx.WriteError(w, http.StatusBadRequest, "invalid society id")
+		httpx.WriteError(w, http.StatusBadRequest, "invalid org id")
 		return
 	}
-	membershipID, ok := httpx.PathID(r, "membership_id")
+	membershipID, ok := httpx.PathUUID(r, "membership_id")
 	if !ok {
 		httpx.WriteError(w, http.StatusBadRequest, "invalid membership id")
 		return
 	}
 
-	m, err := h.svc.ArchiveMembership(r.Context(), societyID, membershipID)
+	m, err := h.svc.ArchiveMembership(r.Context(), orgID, membershipID)
 	if errors.Is(err, ErrMembershipNotFound) {
 		httpx.WriteError(w, http.StatusNotFound, "membership not found")
 		return

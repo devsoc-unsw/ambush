@@ -8,6 +8,7 @@ import (
 	"database/sql/driver"
 	"fmt"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -57,8 +58,9 @@ func (ns NullAuditAction) Value() (driver.Value, error) {
 type AuditEntity string
 
 const (
-	AuditEntitySociety    AuditEntity = "society"
-	AuditEntitySocrole    AuditEntity = "socrole"
+	AuditEntityOrg        AuditEntity = "org"
+	AuditEntityTeam       AuditEntity = "team"
+	AuditEntityRole       AuditEntity = "role"
 	AuditEntityMembership AuditEntity = "membership"
 )
 
@@ -99,12 +101,12 @@ func (ns NullAuditEntity) Value() (driver.Value, error) {
 
 type AuditLog struct {
 	ID          int64
-	ChangeSetID pgtype.UUID
-	SocID       int32
+	ChangeSetID uuid.UUID
+	OrgID       uuid.UUID
 	EntityType  AuditEntity
-	EntityID    int32
+	EntityID    uuid.UUID
 	Action      AuditAction
-	ActorID     pgtype.UUID
+	ActorID     uuid.UUID
 	Before      []byte
 	After       []byte
 	UndoesID    pgtype.Int8
@@ -112,16 +114,16 @@ type AuditLog struct {
 }
 
 type Membership struct {
-	ID        int32
-	RoleID    int32
-	UserID    pgtype.UUID
+	ID        uuid.UUID
+	RoleID    uuid.UUID
+	UserID    uuid.UUID
 	CreatedAt pgtype.Timestamptz
 	EndedAt   pgtype.Timestamptz
 	Term      pgtype.Text
 }
 
-type Society struct {
-	ID         int32
+type Org struct {
+	ID         uuid.UUID
 	Name       string
 	Slug       string
 	CreatedAt  pgtype.Timestamptz
@@ -129,11 +131,23 @@ type Society struct {
 	ArchivedAt pgtype.Timestamptz
 }
 
-type Socrole struct {
-	ID           int32
-	SocID        int32
-	ParentRoleID pgtype.Int4
+type Role struct {
+	ID         uuid.UUID
+	OrgID      uuid.UUID
+	TeamID     uuid.UUID
+	Name       string
+	CreatedAt  pgtype.Timestamptz
+	UpdatedAt  pgtype.Timestamptz
+	ArchivedAt pgtype.Timestamptz
+}
+
+type Team struct {
+	ID           uuid.UUID
+	OrgID        uuid.UUID
+	ParentID     uuid.NullUUID
+	LeaderRoleID uuid.NullUUID
 	Name         string
 	CreatedAt    pgtype.Timestamptz
 	UpdatedAt    pgtype.Timestamptz
+	ArchivedAt   pgtype.Timestamptz
 }

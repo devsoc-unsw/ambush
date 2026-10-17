@@ -1,13 +1,13 @@
 -- +goose Up
-CREATE TYPE audit_entity AS ENUM ('society', 'socrole', 'membership');
+CREATE TYPE audit_entity AS ENUM ('org', 'team', 'role', 'membership');
 CREATE TYPE audit_action AS ENUM ('create', 'update', 'delete');
 
 CREATE TABLE audit_log (
     id             BIGSERIAL PRIMARY KEY,
     change_set_id  UUID NOT NULL,          -- groups one user action into one row-set
-    soc_id         INTEGER NOT NULL,
+    org_id         UUID NOT NULL,
     entity_type    audit_entity NOT NULL,
-    entity_id      INTEGER NOT NULL,
+    entity_id      UUID NOT NULL,
     action         audit_action NOT NULL,
     actor_id       UUID NOT NULL,
     before         JSONB,
@@ -22,7 +22,7 @@ CREATE TABLE audit_log (
     )
 );
 
-CREATE INDEX idx_audit_log_soc       ON audit_log (soc_id, id DESC);
+CREATE INDEX idx_audit_log_org       ON audit_log (org_id, id DESC);
 CREATE INDEX idx_audit_log_entity    ON audit_log (entity_type, entity_id, id DESC);
 CREATE INDEX idx_audit_log_changeset ON audit_log (change_set_id);
 CREATE INDEX idx_audit_log_actor     ON audit_log (actor_id, id DESC);

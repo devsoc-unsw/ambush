@@ -15,8 +15,8 @@ import (
 )
 
 var (
-	ErrRoleNotInSociety       = errors.New("role does not belong to society")
-	ErrSocietyNotFound        = errors.New("society not found")
+	ErrRoleNotInOrg           = errors.New("role does not belong to org")
+	ErrOrgNotFound            = errors.New("org not found")
 	ErrAlreadyMember          = errors.New("user already holds this role")
 	ErrPreviousHolderNotFound = errors.New("previous user does not hold this role")
 	ErrMembershipNotFound     = errors.New("membership not found")
@@ -32,13 +32,13 @@ func NewService(pool *pgxpool.Pool) *Service {
 }
 
 type NewMembership struct {
-	SocietyID int32
-	RoleID    int32
-	UserID    uuid.UUID
+	OrgID  uuid.UUID
+	RoleID uuid.UUID
+	UserID uuid.UUID
 }
 
 type MembershipPair struct {
-	RoleID int32
+	RoleID uuid.UUID
 	UserID uuid.UUID
 }
 
@@ -48,32 +48,61 @@ type AssignResult struct {
 }
 
 type Membership struct {
-	ID       int32
-	RoleID   int32
+	ID       uuid.UUID
+	RoleID   uuid.UUID
 	UserID   uuid.UUID
 	Term     *string
 	JoinedAt time.Time
 	EndedAt  *time.Time // nil = still current
 }
 
+func toMembership(m db.Membership) Membership {
+	out := Membership{
+		ID:       m.ID,
+		RoleID:   m.RoleID,
+		UserID:   m.UserID,
+		JoinedAt: m.CreatedAt.Time,
+	}
+	if m.Term.Valid {
+		out.Term = &m.Term.String
+	}
+	if m.EndedAt.Valid {
+		out.EndedAt = &m.EndedAt.Time
+	}
+	return out
+}
+
+// Portfolio is one role a user currently holds, with its team and org.
+type Portfolio struct {
+	MembershipID uuid.UUID
+	JoinedAt     time.Time
+	RoleID       uuid.UUID
+	RoleName     string
+	TeamID       uuid.UUID
+	TeamName     string
+	OrgID        uuid.UUID
+	OrgName      string
+	OrgSlug      string
+}
+
 func (s *Service) CreateMembership(
 	ctx context.Context, in NewMembership,
-) (int32, error) {
+) (uuid.UUID, error) {
 	m, err := s.q.CreateMembership(ctx, db.CreateMembershipParams{
-		UserID: pgtype.UUID{Bytes: in.UserID, Valid: true},
+		UserID: in.UserID,
 		RoleID: in.RoleID,
-		SocID:  in.SocietyID,
+		OrgID:  in.OrgID,
 	})
-	// the insert selects the role from socroles, so no row back means the
-	// role doesn't exist in that society
+	// the insert selects the role, so no row back means the role isn't in that
+	// org, or the role, its team or the org is archived
 	if errors.Is(err, pgx.ErrNoRows) {
-		return 0, ErrRoleNotInSociety
+		return uuid.Nil, ErrRoleNotInOrg
 	}
 	if pgerr.IsUniqueViolation(err) {
-		return 0, ErrAlreadyMember
+		return uuid.Nil, ErrAlreadyMember
 	}
 	if err != nil {
-		return 0, fmt.Errorf("create membership: %w", err)
+		return uuid.Nil, fmt.Errorf("create membership: %w", err)
 	}
 
 	return m.ID, nil
@@ -81,47 +110,61 @@ func (s *Service) CreateMembership(
 
 func (s *Service) ListUserPortfolios(
 	ctx context.Context, userID uuid.UUID,
-) ([]db.ListUserPortfoliosRow, error) {
-	rows, err := s.q.ListUserPortfolios(ctx,
-		pgtype.UUID{Bytes: userID, Valid: true})
+) ([]Portfolio, error) {
+	rows, err := s.q.ListUserPortfolios(ctx, userID)
 	if err != nil {
 		return nil, fmt.Errorf("list user portfolios: %w", err)
 	}
 
-	return rows, nil
+	out := make([]Portfolio, len(rows))
+	for i, r := range rows {
+		out[i] = Portfolio{
+			MembershipID: r.MembershipID,
+			JoinedAt:     r.JoinedAt.Time,
+			RoleID:       r.RoleID,
+			RoleName:     r.RoleName,
+			TeamID:       r.TeamID,
+			TeamName:     r.TeamName,
+			OrgID:        r.OrgID,
+			OrgName:      r.OrgName,
+			OrgSlug:      r.OrgSlug,
+		}
+	}
+
+	return out, nil
 }
 
 func (s *Service) AssignMemberships(
-	ctx context.Context, societyID int32, pairs []MembershipPair,
+	ctx context.Context, orgID uuid.UUID, pairs []MembershipPair,
 ) (AssignResult, error) {
 	// same index in both slices so unnest pairs them back up
-	roleIDs := make([]int32, len(pairs))
-	userIDs := make([]pgtype.UUID, len(pairs))
+	roleIDs := make([]uuid.UUID, len(pairs))
+	userIDs := make([]uuid.UUID, len(pairs))
 	for i, p := range pairs {
 		roleIDs[i] = p.RoleID
-		userIDs[i] = pgtype.UUID{Bytes: p.UserID, Valid: true}
+		userIDs[i] = p.UserID
 	}
 
-	// pairs whose role isn't in the society, or that already exist, are
+	// pairs whose role isn't usable in the org, or that already exist, are
 	// silently dropped by the query, so they only show up as skipped
 	rows, err := s.q.CreateMemberships(ctx, db.CreateMembershipsParams{
 		RoleIds: roleIDs,
 		UserIds: userIDs,
-		SocID:   societyID,
+		OrgID:   orgID,
 	})
 	if err != nil {
 		return AssignResult{}, fmt.Errorf("assign memberships: %w", err)
 	}
 
-	// nothing created could mean the society doesn't exist. only check then,
+	// nothing created could mean the org doesn't exist. only check then,
 	// since any created row already proves it does
 	if len(rows) == 0 {
-		soc, err := s.q.GetSociety(ctx, societyID)
-		if errors.Is(err, pgx.ErrNoRows) || soc.ArchivedAt.Valid {
-			return AssignResult{}, ErrSocietyNotFound
+		org, err := s.q.GetOrg(ctx, orgID)
+		if errors.Is(err, pgx.ErrNoRows) || org.ArchivedAt.Valid {
+			return AssignResult{}, ErrOrgNotFound
 		}
 		if err != nil {
-			return AssignResult{}, fmt.Errorf("get society: %w", err)
+			return AssignResult{}, fmt.Errorf("get org: %w", err)
 		}
 	}
 
@@ -129,8 +172,8 @@ func (s *Service) AssignMemberships(
 }
 
 type Handover struct {
-	SocietyID int32
-	RoleID    int32
+	OrgID     uuid.UUID
+	RoleID    uuid.UUID
 	NewUserID uuid.UUID
 	// nil ends every current holder of the role
 	PreviousUserID *uuid.UUID
@@ -138,7 +181,7 @@ type Handover struct {
 }
 
 type HandoverResult struct {
-	MembershipID int32
+	MembershipID uuid.UUID
 	Ended        int
 }
 
@@ -157,12 +200,12 @@ func (s *Service) HandoverRole(
 
 	// lock the role first. a second handover of the same role waits here until
 	// we commit, so its update then sees our new holder instead of missing it
-	_, err = q.LockSocRoleInSociety(ctx, db.LockSocRoleInSocietyParams{
+	_, err = q.LockActiveRoleInOrg(ctx, db.LockActiveRoleInOrgParams{
 		RoleID: in.RoleID,
-		SocID:  in.SocietyID,
+		OrgID:  in.OrgID,
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
-		return HandoverResult{}, ErrRoleNotInSociety
+		return HandoverResult{}, ErrRoleNotInOrg
 	}
 	if err != nil {
 		return HandoverResult{}, fmt.Errorf("lock role: %w", err)
@@ -170,7 +213,7 @@ func (s *Service) HandoverRole(
 
 	end := db.EndRoleMembershipsParams{RoleID: in.RoleID}
 	if in.PreviousUserID != nil {
-		end.UserID = pgtype.UUID{Bytes: *in.PreviousUserID, Valid: true}
+		end.UserID = uuid.NullUUID{UUID: *in.PreviousUserID, Valid: true}
 	}
 	ended, err := q.EndRoleMemberships(ctx, end)
 	if err != nil {
@@ -181,10 +224,10 @@ func (s *Service) HandoverRole(
 	}
 
 	m, err := q.CreateMembership(ctx, db.CreateMembershipParams{
-		UserID: pgtype.UUID{Bytes: in.NewUserID, Valid: true},
+		UserID: in.NewUserID,
 		Term:   pgtype.Text{String: in.Term, Valid: true},
 		RoleID: in.RoleID,
-		SocID:  in.SocietyID,
+		OrgID:  in.OrgID,
 	})
 	// only possible when the new user is a current holder who wasn't ended
 	if pgerr.IsUniqueViolation(err) {
@@ -201,32 +244,17 @@ func (s *Service) HandoverRole(
 
 	return HandoverResult{MembershipID: m.ID, Ended: len(ended)}, nil
 }
-func toMembership(m db.Membership) Membership {
-	out := Membership{
-		ID:       m.ID,
-		RoleID:   m.RoleID,
-		UserID:   uuid.UUID(m.UserID.Bytes),
-		JoinedAt: m.CreatedAt.Time,
-	}
-	if m.Term.Valid {
-		out.Term = &m.Term.String
-	}
-	if m.EndedAt.Valid {
-		out.EndedAt = &m.EndedAt.Time
-	}
-	return out
-}
 
 // ArchiveMembership ends a membership. Archiving it again is a no-op.
 func (s *Service) ArchiveMembership(
-	ctx context.Context, societyID, membershipID int32,
+	ctx context.Context, orgID, membershipID uuid.UUID,
 ) (Membership, error) {
 	m, err := s.q.ArchiveMembership(ctx, db.ArchiveMembershipParams{
 		MembershipID: membershipID,
-		SocID:        societyID,
+		OrgID:        orgID,
 	})
-	// no row back covers a missing membership, one from another society, and
-	// an archived society
+	// no row back covers a missing membership, one from another org, and an
+	// archived org
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Membership{}, ErrMembershipNotFound
 	}

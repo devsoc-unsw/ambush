@@ -2,8 +2,9 @@ package main
 
 import (
 	"backend/internal/memberships"
-	"backend/internal/societies"
-	"backend/internal/socroles"
+	"backend/internal/orgs"
+	"backend/internal/roles"
+	"backend/internal/teams"
 	"context"
 	"errors"
 	"fmt"
@@ -47,20 +48,13 @@ func run() error {
 		return fmt.Errorf("db ping: %w", err)
 	}
 
+	// shared by the HTTP and gRPC servers
+	memSvc := memberships.NewService(pool)
+
 	// HTTP: 8080
-	mux := http.NewServeMux()
-	mux.HandleFunc("GET /healthz",
-		func(w http.ResponseWriter, r *http.Request) {
-			w.WriteHeader(http.StatusOK)
-		})
-
-	societies.NewHandler(societies.NewService(pool)).Routes(mux)
-	socroles.NewHandler(socroles.NewService(pool)).Routes(mux)
-	memberships.NewHandler(memberships.NewService(pool)).Routes(mux)
-
 	srv := &http.Server{
 		Addr:              ":8080",
-		Handler:           mux,
+		Handler:           newMux(pool, memSvc),
 		ReadHeaderTimeout: 5 * time.Second,
 		WriteTimeout:      10 * time.Second,
 		IdleTimeout:       60 * time.Second,
@@ -81,7 +75,7 @@ func run() error {
 		return fmt.Errorf("grpc listen: %w", err)
 	}
 	grpcSrv := grpc.NewServer()
-	memberships.NewGRPCServer(memberships.NewService(pool)).Register(grpcSrv)
+	memberships.NewGRPCServer(memSvc).Register(grpcSrv)
 	reflection.Register(grpcSrv)
 	go func() {
 		log.Println("grpc listening on :8067")
@@ -101,4 +95,19 @@ func run() error {
 
 	grpcSrv.GracefulStop()
 	return srv.Shutdown(shutdownCtx)
+}
+
+func newMux(pool *pgxpool.Pool, memSvc *memberships.Service) *http.ServeMux {
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /healthz",
+		func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusOK)
+		})
+
+	orgs.NewHandler(orgs.NewService(pool)).Routes(mux)
+	teams.NewHandler(teams.NewService(pool)).Routes(mux)
+	roles.NewHandler(roles.NewService(pool)).Routes(mux)
+	memberships.NewHandler(memSvc).Routes(mux)
+
+	return mux
 }

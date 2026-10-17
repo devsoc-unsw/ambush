@@ -1,8 +1,10 @@
 -- +goose Up
 CREATE TABLE memberships (
-    id          SERIAL PRIMARY KEY,
-    role_id     INTEGER NOT NULL REFERENCES socroles(id) ON DELETE CASCADE,
-    user_id     UUID NOT NULL, -- provided by ory
+    id          UUID PRIMARY KEY DEFAULT uuidv7(),
+    -- RESTRICT so deleting a role can't wipe membership history. archive the
+    -- role instead
+    role_id     UUID NOT NULL REFERENCES roles(id) ON DELETE RESTRICT,
+    user_id     UUID NOT NULL,  -- provided by ory
     created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
     ended_at    TIMESTAMPTZ,    -- NULL = currently holds the role
     term        TEXT            -- label only, e.g. '2026' or '2026 T1'

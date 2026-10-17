@@ -8,3 +8,11 @@ sql:
         package: "db"
         out: "."
         sql_package: "pgx/v5"
+        # every id is a uuid, so use google/uuid directly instead of wrapping
+        # pgtype.UUID everywhere
+        overrides:
+          - db_type: "uuid"
+            go_type: "github.com/google/uuid.UUID"
+          - db_type: "uuid"
+            nullable: true
+            go_type: "github.com/google/uuid.NullUUID"

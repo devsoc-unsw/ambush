@@ -1,18 +1,18 @@
--- name: CreateSociety :one
-INSERT INTO societies (name, slug)
+-- name: CreateOrg :one
+INSERT INTO orgs (name, slug)
 VALUES ($1, $2)
 RETURNING *;
 
--- name: GetSociety :one
-SELECT * FROM societies
+-- name: GetOrg :one
+SELECT * FROM orgs
 WHERE id = $1;
 
--- TODO: GetSocietyBySlug :one
+-- TODO: GetOrgBySlug :one
 
--- TODO: ListSocieties :many
+-- TODO: ListOrgs :many
 
--- name: UpdateSociety :one
-UPDATE societies
+-- name: UpdateOrg :one
+UPDATE orgs
 SET name = COALESCE(sqlc.narg('name'), name),
     slug = COALESCE(sqlc.narg('slug'), slug),
     updated_at = now()
@@ -20,8 +20,8 @@ WHERE id = sqlc.arg('id') AND archived_at IS NULL
 RETURNING *;
 
 -- COALESCE keeps the original time, so archiving twice is a no-op
--- name: ArchiveSociety :one
-UPDATE societies
+-- name: ArchiveOrg :one
+UPDATE orgs
 SET archived_at = COALESCE(archived_at, now())
 WHERE id = $1
 RETURNING *;

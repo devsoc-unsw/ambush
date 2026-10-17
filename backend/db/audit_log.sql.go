@@ -8,25 +8,26 @@ package db
 import (
 	"context"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const createAuditEntry = `-- name: CreateAuditEntry :one
 INSERT INTO audit_log (
-    change_set_id, soc_id, entity_type, entity_id,
+    change_set_id, org_id, entity_type, entity_id,
     action, actor_id, before, after, undoes_id
 )
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-RETURNING id, change_set_id, soc_id, entity_type, entity_id, action, actor_id, before, after, undoes_id, created_at
+RETURNING id, change_set_id, org_id, entity_type, entity_id, action, actor_id, before, after, undoes_id, created_at
 `
 
 type CreateAuditEntryParams struct {
-	ChangeSetID pgtype.UUID
-	SocID       int32
+	ChangeSetID uuid.UUID
+	OrgID       uuid.UUID
 	EntityType  AuditEntity
-	EntityID    int32
+	EntityID    uuid.UUID
 	Action      AuditAction
-	ActorID     pgtype.UUID
+	ActorID     uuid.UUID
 	Before      []byte
 	After       []byte
 	UndoesID    pgtype.Int8
@@ -35,7 +36,7 @@ type CreateAuditEntryParams struct {
 func (q *Queries) CreateAuditEntry(ctx context.Context, arg CreateAuditEntryParams) (AuditLog, error) {
 	row := q.db.QueryRow(ctx, createAuditEntry,
 		arg.ChangeSetID,
-		arg.SocID,
+		arg.OrgID,
 		arg.EntityType,
 		arg.EntityID,
 		arg.Action,
@@ -48,7 +49,7 @@ func (q *Queries) CreateAuditEntry(ctx context.Context, arg CreateAuditEntryPara
 	err := row.Scan(
 		&i.ID,
 		&i.ChangeSetID,
-		&i.SocID,
+		&i.OrgID,
 		&i.EntityType,
 		&i.EntityID,
 		&i.Action,
@@ -62,7 +63,7 @@ func (q *Queries) CreateAuditEntry(ctx context.Context, arg CreateAuditEntryPara
 }
 
 const getAuditEntry = `-- name: GetAuditEntry :one
-SELECT id, change_set_id, soc_id, entity_type, entity_id, action, actor_id, before, after, undoes_id, created_at FROM audit_log
+SELECT id, change_set_id, org_id, entity_type, entity_id, action, actor_id, before, after, undoes_id, created_at FROM audit_log
 WHERE id = $1
 `
 
@@ -72,7 +73,7 @@ func (q *Queries) GetAuditEntry(ctx context.Context, id int64) (AuditLog, error)
 	err := row.Scan(
 		&i.ID,
 		&i.ChangeSetID,
-		&i.SocID,
+		&i.OrgID,
 		&i.EntityType,
 		&i.EntityID,
 		&i.Action,

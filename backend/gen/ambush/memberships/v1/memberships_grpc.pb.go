@@ -26,6 +26,8 @@ const (
 // MembershipServiceClient is the client API for MembershipService service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
+//
+// all ids are uuid strings
 type MembershipServiceClient interface {
 	CreateMembership(ctx context.Context, in *CreateMembershipRequest, opts ...grpc.CallOption) (*CreateMembershipResponse, error)
 	// "given a person, which portfolios are they part of?"
@@ -63,6 +65,8 @@ func (c *membershipServiceClient) ListUserPortfolios(ctx context.Context, in *Li
 // MembershipServiceServer is the server API for MembershipService service.
 // All implementations must embed UnimplementedMembershipServiceServer
 // for forward compatibility.
+//
+// all ids are uuid strings
 type MembershipServiceServer interface {
 	CreateMembership(context.Context, *CreateMembershipRequest) (*CreateMembershipResponse, error)
 	// "given a person, which portfolios are they part of?"

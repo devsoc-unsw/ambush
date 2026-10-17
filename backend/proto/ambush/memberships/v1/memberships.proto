@@ -4,6 +4,7 @@ package ambush.memberships.v1;
 
 import "google/protobuf/timestamp.proto";
 
+// all ids are uuid strings
 service MembershipService {
   rpc CreateMembership(CreateMembershipRequest) returns (CreateMembershipResponse);
   // "given a person, which portfolios are they part of?"
@@ -11,30 +12,32 @@ service MembershipService {
 }
 
 message CreateMembershipRequest {
-  int32 society_id = 1;
-  int32 role_id = 2;
-  string user_id = 3; // uuid, provided by ory
+  string org_id = 1;
+  string role_id = 2;
+  string user_id = 3; // provided by ory
 }
 
 message CreateMembershipResponse {
-  int32 membership_id = 1;
+  string membership_id = 1;
 }
 
 message ListUserPortfoliosRequest {
-  string user_id = 1; // uuid, provided by ory
+  string user_id = 1; // provided by ory
 }
 
 message ListUserPortfoliosResponse {
   repeated Portfolio portfolios = 1;
 }
 
+// one role a user currently holds, with its team and org
 message Portfolio {
-  int32 membership_id = 1;
+  string membership_id = 1;
   google.protobuf.Timestamp joined_at = 2;
-  int32 role_id = 3;
+  string role_id = 3;
   string role_name = 4;
-  optional int32 role_parent_role_id = 5;
-  int32 society_id = 6;
-  string society_name = 7;
-  string society_slug = 8;
+  string team_id = 5;
+  string team_name = 6;
+  string org_id = 7;
+  string org_name = 8;
+  string org_slug = 9;
 }

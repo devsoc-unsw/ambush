@@ -8,30 +8,32 @@ package db
 import (
 	"context"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const archiveMembership = `-- name: ArchiveMembership :one
 UPDATE memberships m
 SET ended_at = COALESCE(m.ended_at, now())
-FROM socroles r
-JOIN societies s ON s.id = r.soc_id AND s.archived_at IS NULL
+FROM roles r
+JOIN orgs o ON o.id = r.org_id AND o.archived_at IS NULL
 WHERE m.id = $1
   AND r.id = m.role_id
-  AND r.soc_id = $2
+  AND r.org_id = $2
 RETURNING m.id, m.role_id, m.user_id, m.created_at, m.ended_at, m.term
 `
 
 type ArchiveMembershipParams struct {
-	MembershipID int32
-	SocID        int32
+	MembershipID uuid.UUID
+	OrgID        uuid.UUID
 }
 
 // ends a membership. COALESCE keeps the original time, so archiving twice is
-// a no-op. joining through socroles scopes it to the society in the path, and
-// archived societies are read only
+// a no-op. joining through roles scopes it to the org in the path, and
+// archived orgs are read only. archived roles and teams are allowed, so their
+// leftover memberships can still be ended
 func (q *Queries) ArchiveMembership(ctx context.Context, arg ArchiveMembershipParams) (Membership, error) {
-	row := q.db.QueryRow(ctx, archiveMembership, arg.MembershipID, arg.SocID)
+	row := q.db.QueryRow(ctx, archiveMembership, arg.MembershipID, arg.OrgID)
 	var i Membership
 	err := row.Scan(
 		&i.ID,
@@ -47,26 +49,30 @@ func (q *Queries) ArchiveMembership(ctx context.Context, arg ArchiveMembershipPa
 const createMembership = `-- name: CreateMembership :one
 INSERT INTO memberships (role_id, user_id, term)
 SELECT r.id, $1, $2::text
-FROM socroles r
-JOIN societies s ON s.id = r.soc_id AND s.archived_at IS NULL
-WHERE r.id = $3 AND r.soc_id = $4
+FROM roles r
+JOIN teams t ON t.id = r.team_id AND t.archived_at IS NULL
+JOIN orgs o ON o.id = r.org_id AND o.archived_at IS NULL
+WHERE r.id = $3
+  AND r.org_id = $4
+  AND r.archived_at IS NULL
 RETURNING id, role_id, user_id, created_at, ended_at, term
 `
 
 type CreateMembershipParams struct {
-	UserID pgtype.UUID
+	UserID uuid.UUID
 	Term   pgtype.Text
-	RoleID int32
-	SocID  int32
+	RoleID uuid.UUID
+	OrgID  uuid.UUID
 }
 
-// note: ensures the role does indeed belong to the society the user is being added to
+// the inserts select the role, so nothing is inserted unless the role is in
+// that org and the role, its team and the org are all active
 func (q *Queries) CreateMembership(ctx context.Context, arg CreateMembershipParams) (Membership, error) {
 	row := q.db.QueryRow(ctx, createMembership,
 		arg.UserID,
 		arg.Term,
 		arg.RoleID,
-		arg.SocID,
+		arg.OrgID,
 	)
 	var i Membership
 	err := row.Scan(
@@ -85,25 +91,28 @@ const createMemberships = `-- name: CreateMemberships :many
 INSERT INTO memberships (role_id, user_id)
 SELECT r.id, u.user_id
 FROM (
-    SELECT unnest($1::int[])  AS role_id,
+    SELECT unnest($1::uuid[]) AS role_id,
            unnest($2::uuid[]) AS user_id
 ) AS u
-JOIN socroles r ON r.id = u.role_id AND r.soc_id = $3
-JOIN societies s ON s.id = r.soc_id AND s.archived_at IS NULL
+JOIN roles r ON r.id = u.role_id
+    AND r.org_id = $3
+    AND r.archived_at IS NULL
+JOIN teams t ON t.id = r.team_id AND t.archived_at IS NULL
+JOIN orgs o ON o.id = r.org_id AND o.archived_at IS NULL
 ON CONFLICT (role_id, user_id) WHERE ended_at IS NULL DO NOTHING
 RETURNING id, role_id, user_id, created_at, ended_at, term
 `
 
 type CreateMembershipsParams struct {
-	RoleIds []int32
-	UserIds []pgtype.UUID
-	SocID   int32
+	RoleIds []uuid.UUID
+	UserIds []uuid.UUID
+	OrgID   uuid.UUID
 }
 
 // TODO: GetMembership :one
 // the WHERE has to match the partial unique index for postgres to find it
 func (q *Queries) CreateMemberships(ctx context.Context, arg CreateMembershipsParams) ([]Membership, error) {
-	rows, err := q.db.Query(ctx, createMemberships, arg.RoleIds, arg.UserIds, arg.SocID)
+	rows, err := q.db.Query(ctx, createMemberships, arg.RoleIds, arg.UserIds, arg.OrgID)
 	if err != nil {
 		return nil, err
 	}
@@ -140,21 +149,21 @@ RETURNING id
 `
 
 type EndRoleMembershipsParams struct {
-	RoleID int32
-	UserID pgtype.UUID
+	RoleID uuid.UUID
+	UserID uuid.NullUUID
 }
 
-// TODO: GetUserMembershipInSociety :one
+// TODO: GetUserMembershipInOrg :one
 // ends the current holders of a role. with user_id set, only that holder
-func (q *Queries) EndRoleMemberships(ctx context.Context, arg EndRoleMembershipsParams) ([]int32, error) {
+func (q *Queries) EndRoleMemberships(ctx context.Context, arg EndRoleMembershipsParams) ([]uuid.UUID, error) {
 	rows, err := q.db.Query(ctx, endRoleMemberships, arg.RoleID, arg.UserID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []int32
+	var items []uuid.UUID
 	for rows.Next() {
-		var id int32
+		var id uuid.UUID
 		if err := rows.Scan(&id); err != nil {
 			return nil, err
 		}
@@ -174,32 +183,35 @@ SELECT
     m.created_at        AS joined_at,
     r.id                AS role_id,
     r.name              AS role_name,
-    r.parent_role_id    AS role_parent_role_id,
-    s.id                AS society_id,
-    s.name              AS society_name,
-    s.slug              AS society_slug
+    t.id                AS team_id,
+    t.name              AS team_name,
+    o.id                AS org_id,
+    o.name              AS org_name,
+    o.slug              AS org_slug
 FROM memberships m
-JOIN socroles r ON r.id = m.role_id
-JOIN societies s ON s.id = r.soc_id
-WHERE m.user_id = $1 AND m.ended_at IS NULL AND s.archived_at IS NULL
-ORDER BY s.name, r.name
+JOIN roles r ON r.id = m.role_id AND r.archived_at IS NULL
+JOIN teams t ON t.id = r.team_id AND t.archived_at IS NULL
+JOIN orgs o ON o.id = r.org_id AND o.archived_at IS NULL
+WHERE m.user_id = $1 AND m.ended_at IS NULL
+ORDER BY o.name, t.name, r.name
 `
 
 type ListUserPortfoliosRow struct {
-	MembershipID     int32
-	JoinedAt         pgtype.Timestamptz
-	RoleID           int32
-	RoleName         string
-	RoleParentRoleID pgtype.Int4
-	SocietyID        int32
-	SocietyName      string
-	SocietySlug      string
+	MembershipID uuid.UUID
+	JoinedAt     pgtype.Timestamptz
+	RoleID       uuid.UUID
+	RoleName     string
+	TeamID       uuid.UUID
+	TeamName     string
+	OrgID        uuid.UUID
+	OrgName      string
+	OrgSlug      string
 }
 
-// TODO: ListMembershipsBySociety :many
+// TODO: ListMembershipsByOrg :many
 // TODO: ListMembershipsByRole :many
 // "given a person, which portfolios are they part of?"
-func (q *Queries) ListUserPortfolios(ctx context.Context, userID pgtype.UUID) ([]ListUserPortfoliosRow, error) {
+func (q *Queries) ListUserPortfolios(ctx context.Context, userID uuid.UUID) ([]ListUserPortfoliosRow, error) {
 	rows, err := q.db.Query(ctx, listUserPortfolios, userID)
 	if err != nil {
 		return nil, err
@@ -213,10 +225,11 @@ func (q *Queries) ListUserPortfolios(ctx context.Context, userID pgtype.UUID) ([
 			&i.JoinedAt,
 			&i.RoleID,
 			&i.RoleName,
-			&i.RoleParentRoleID,
-			&i.SocietyID,
-			&i.SocietyName,
-			&i.SocietySlug,
+			&i.TeamID,
+			&i.TeamName,
+			&i.OrgID,
+			&i.OrgName,
+			&i.OrgSlug,
 		); err != nil {
 			return nil, err
 		}

@@ -1,10 +1,14 @@
--- note: ensures the role does indeed belong to the society the user is being added to
+-- the inserts select the role, so nothing is inserted unless the role is in
+-- that org and the role, its team and the org are all active
 -- name: CreateMembership :one
 INSERT INTO memberships (role_id, user_id, term)
 SELECT r.id, sqlc.arg('user_id'), sqlc.narg('term')::text
-FROM socroles r
-JOIN societies s ON s.id = r.soc_id AND s.archived_at IS NULL
-WHERE r.id = sqlc.arg('role_id') AND r.soc_id = sqlc.arg('soc_id')
+FROM roles r
+JOIN teams t ON t.id = r.team_id AND t.archived_at IS NULL
+JOIN orgs o ON o.id = r.org_id AND o.archived_at IS NULL
+WHERE r.id = sqlc.arg('role_id')
+  AND r.org_id = sqlc.arg('org_id')
+  AND r.archived_at IS NULL
 RETURNING *;
 
 -- TODO: GetMembership :one
@@ -13,16 +17,19 @@ RETURNING *;
 INSERT INTO memberships (role_id, user_id)
 SELECT r.id, u.user_id
 FROM (
-    SELECT unnest(sqlc.arg('role_ids')::int[])  AS role_id,
+    SELECT unnest(sqlc.arg('role_ids')::uuid[]) AS role_id,
            unnest(sqlc.arg('user_ids')::uuid[]) AS user_id
 ) AS u
-JOIN socroles r ON r.id = u.role_id AND r.soc_id = sqlc.arg('soc_id')
-JOIN societies s ON s.id = r.soc_id AND s.archived_at IS NULL
+JOIN roles r ON r.id = u.role_id
+    AND r.org_id = sqlc.arg('org_id')
+    AND r.archived_at IS NULL
+JOIN teams t ON t.id = r.team_id AND t.archived_at IS NULL
+JOIN orgs o ON o.id = r.org_id AND o.archived_at IS NULL
 -- the WHERE has to match the partial unique index for postgres to find it
 ON CONFLICT (role_id, user_id) WHERE ended_at IS NULL DO NOTHING
 RETURNING *;
 
--- TODO: ListMembershipsBySociety :many
+-- TODO: ListMembershipsByOrg :many
 
 -- TODO: ListMembershipsByRole :many
 
@@ -33,17 +40,19 @@ SELECT
     m.created_at        AS joined_at,
     r.id                AS role_id,
     r.name              AS role_name,
-    r.parent_role_id    AS role_parent_role_id,
-    s.id                AS society_id,
-    s.name              AS society_name,
-    s.slug              AS society_slug
+    t.id                AS team_id,
+    t.name              AS team_name,
+    o.id                AS org_id,
+    o.name              AS org_name,
+    o.slug              AS org_slug
 FROM memberships m
-JOIN socroles r ON r.id = m.role_id
-JOIN societies s ON s.id = r.soc_id
-WHERE m.user_id = $1 AND m.ended_at IS NULL AND s.archived_at IS NULL
-ORDER BY s.name, r.name;
+JOIN roles r ON r.id = m.role_id AND r.archived_at IS NULL
+JOIN teams t ON t.id = r.team_id AND t.archived_at IS NULL
+JOIN orgs o ON o.id = r.org_id AND o.archived_at IS NULL
+WHERE m.user_id = $1 AND m.ended_at IS NULL
+ORDER BY o.name, t.name, r.name;
 
--- TODO: GetUserMembershipInSociety :one
+-- TODO: GetUserMembershipInOrg :one
 
 -- ends the current holders of a role. with user_id set, only that holder
 -- name: EndRoleMemberships :many
@@ -55,14 +64,15 @@ WHERE role_id = sqlc.arg('role_id')
 RETURNING id;
 
 -- ends a membership. COALESCE keeps the original time, so archiving twice is
--- a no-op. joining through socroles scopes it to the society in the path, and
--- archived societies are read only
+-- a no-op. joining through roles scopes it to the org in the path, and
+-- archived orgs are read only. archived roles and teams are allowed, so their
+-- leftover memberships can still be ended
 -- name: ArchiveMembership :one
 UPDATE memberships m
 SET ended_at = COALESCE(m.ended_at, now())
-FROM socroles r
-JOIN societies s ON s.id = r.soc_id AND s.archived_at IS NULL
+FROM roles r
+JOIN orgs o ON o.id = r.org_id AND o.archived_at IS NULL
 WHERE m.id = sqlc.arg('membership_id')
   AND r.id = m.role_id
-  AND r.soc_id = sqlc.arg('soc_id')
+  AND r.org_id = sqlc.arg('org_id')
 RETURNING m.*;

@@ -24,9 +24,9 @@ const (
 
 type CreateMembershipRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	SocietyId     int32                  `protobuf:"varint,1,opt,name=society_id,json=societyId,proto3" json:"society_id,omitempty"`
-	RoleId        int32                  `protobuf:"varint,2,opt,name=role_id,json=roleId,proto3" json:"role_id,omitempty"`
-	UserId        string                 `protobuf:"bytes,3,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"` // uuid, provided by ory
+	OrgId         string                 `protobuf:"bytes,1,opt,name=org_id,json=orgId,proto3" json:"org_id,omitempty"`
+	RoleId        string                 `protobuf:"bytes,2,opt,name=role_id,json=roleId,proto3" json:"role_id,omitempty"`
+	UserId        string                 `protobuf:"bytes,3,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"` // provided by ory
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -61,18 +61,18 @@ func (*CreateMembershipRequest) Descriptor() ([]byte, []int) {
 	return file_ambush_memberships_v1_memberships_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *CreateMembershipRequest) GetSocietyId() int32 {
+func (x *CreateMembershipRequest) GetOrgId() string {
 	if x != nil {
-		return x.SocietyId
+		return x.OrgId
 	}
-	return 0
+	return ""
 }
 
-func (x *CreateMembershipRequest) GetRoleId() int32 {
+func (x *CreateMembershipRequest) GetRoleId() string {
 	if x != nil {
 		return x.RoleId
 	}
-	return 0
+	return ""
 }
 
 func (x *CreateMembershipRequest) GetUserId() string {
@@ -84,7 +84,7 @@ func (x *CreateMembershipRequest) GetUserId() string {
 
 type CreateMembershipResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	MembershipId  int32                  `protobuf:"varint,1,opt,name=membership_id,json=membershipId,proto3" json:"membership_id,omitempty"`
+	MembershipId  string                 `protobuf:"bytes,1,opt,name=membership_id,json=membershipId,proto3" json:"membership_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -119,16 +119,16 @@ func (*CreateMembershipResponse) Descriptor() ([]byte, []int) {
 	return file_ambush_memberships_v1_memberships_proto_rawDescGZIP(), []int{1}
 }
 
-func (x *CreateMembershipResponse) GetMembershipId() int32 {
+func (x *CreateMembershipResponse) GetMembershipId() string {
 	if x != nil {
 		return x.MembershipId
 	}
-	return 0
+	return ""
 }
 
 type ListUserPortfoliosRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	UserId        string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"` // uuid, provided by ory
+	UserId        string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"` // provided by ory
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -214,18 +214,20 @@ func (x *ListUserPortfoliosResponse) GetPortfolios() []*Portfolio {
 	return nil
 }
 
+// one role a user currently holds, with its team and org
 type Portfolio struct {
-	state            protoimpl.MessageState `protogen:"open.v1"`
-	MembershipId     int32                  `protobuf:"varint,1,opt,name=membership_id,json=membershipId,proto3" json:"membership_id,omitempty"`
-	JoinedAt         *timestamppb.Timestamp `protobuf:"bytes,2,opt,name=joined_at,json=joinedAt,proto3" json:"joined_at,omitempty"`
-	RoleId           int32                  `protobuf:"varint,3,opt,name=role_id,json=roleId,proto3" json:"role_id,omitempty"`
-	RoleName         string                 `protobuf:"bytes,4,opt,name=role_name,json=roleName,proto3" json:"role_name,omitempty"`
-	RoleParentRoleId *int32                 `protobuf:"varint,5,opt,name=role_parent_role_id,json=roleParentRoleId,proto3,oneof" json:"role_parent_role_id,omitempty"`
-	SocietyId        int32                  `protobuf:"varint,6,opt,name=society_id,json=societyId,proto3" json:"society_id,omitempty"`
-	SocietyName      string                 `protobuf:"bytes,7,opt,name=society_name,json=societyName,proto3" json:"society_name,omitempty"`
-	SocietySlug      string                 `protobuf:"bytes,8,opt,name=society_slug,json=societySlug,proto3" json:"society_slug,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	MembershipId  string                 `protobuf:"bytes,1,opt,name=membership_id,json=membershipId,proto3" json:"membership_id,omitempty"`
+	JoinedAt      *timestamppb.Timestamp `protobuf:"bytes,2,opt,name=joined_at,json=joinedAt,proto3" json:"joined_at,omitempty"`
+	RoleId        string                 `protobuf:"bytes,3,opt,name=role_id,json=roleId,proto3" json:"role_id,omitempty"`
+	RoleName      string                 `protobuf:"bytes,4,opt,name=role_name,json=roleName,proto3" json:"role_name,omitempty"`
+	TeamId        string                 `protobuf:"bytes,5,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
+	TeamName      string                 `protobuf:"bytes,6,opt,name=team_name,json=teamName,proto3" json:"team_name,omitempty"`
+	OrgId         string                 `protobuf:"bytes,7,opt,name=org_id,json=orgId,proto3" json:"org_id,omitempty"`
+	OrgName       string                 `protobuf:"bytes,8,opt,name=org_name,json=orgName,proto3" json:"org_name,omitempty"`
+	OrgSlug       string                 `protobuf:"bytes,9,opt,name=org_slug,json=orgSlug,proto3" json:"org_slug,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *Portfolio) Reset() {
@@ -258,11 +260,11 @@ func (*Portfolio) Descriptor() ([]byte, []int) {
 	return file_ambush_memberships_v1_memberships_proto_rawDescGZIP(), []int{4}
 }
 
-func (x *Portfolio) GetMembershipId() int32 {
+func (x *Portfolio) GetMembershipId() string {
 	if x != nil {
 		return x.MembershipId
 	}
-	return 0
+	return ""
 }
 
 func (x *Portfolio) GetJoinedAt() *timestamppb.Timestamp {
@@ -272,11 +274,11 @@ func (x *Portfolio) GetJoinedAt() *timestamppb.Timestamp {
 	return nil
 }
 
-func (x *Portfolio) GetRoleId() int32 {
+func (x *Portfolio) GetRoleId() string {
 	if x != nil {
 		return x.RoleId
 	}
-	return 0
+	return ""
 }
 
 func (x *Portfolio) GetRoleName() string {
@@ -286,30 +288,37 @@ func (x *Portfolio) GetRoleName() string {
 	return ""
 }
 
-func (x *Portfolio) GetRoleParentRoleId() int32 {
-	if x != nil && x.RoleParentRoleId != nil {
-		return *x.RoleParentRoleId
-	}
-	return 0
-}
-
-func (x *Portfolio) GetSocietyId() int32 {
+func (x *Portfolio) GetTeamId() string {
 	if x != nil {
-		return x.SocietyId
-	}
-	return 0
-}
-
-func (x *Portfolio) GetSocietyName() string {
-	if x != nil {
-		return x.SocietyName
+		return x.TeamId
 	}
 	return ""
 }
 
-func (x *Portfolio) GetSocietySlug() string {
+func (x *Portfolio) GetTeamName() string {
 	if x != nil {
-		return x.SocietySlug
+		return x.TeamName
+	}
+	return ""
+}
+
+func (x *Portfolio) GetOrgId() string {
+	if x != nil {
+		return x.OrgId
+	}
+	return ""
+}
+
+func (x *Portfolio) GetOrgName() string {
+	if x != nil {
+		return x.OrgName
+	}
+	return ""
+}
+
+func (x *Portfolio) GetOrgSlug() string {
+	if x != nil {
+		return x.OrgSlug
 	}
 	return ""
 }
@@ -318,31 +327,29 @@ var File_ambush_memberships_v1_memberships_proto protoreflect.FileDescriptor
 
 const file_ambush_memberships_v1_memberships_proto_rawDesc = "" +
 	"\n" +
-	"'ambush/memberships/v1/memberships.proto\x12\x15ambush.memberships.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"j\n" +
-	"\x17CreateMembershipRequest\x12\x1d\n" +
-	"\n" +
-	"society_id\x18\x01 \x01(\x05R\tsocietyId\x12\x17\n" +
-	"\arole_id\x18\x02 \x01(\x05R\x06roleId\x12\x17\n" +
+	"'ambush/memberships/v1/memberships.proto\x12\x15ambush.memberships.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"b\n" +
+	"\x17CreateMembershipRequest\x12\x15\n" +
+	"\x06org_id\x18\x01 \x01(\tR\x05orgId\x12\x17\n" +
+	"\arole_id\x18\x02 \x01(\tR\x06roleId\x12\x17\n" +
 	"\auser_id\x18\x03 \x01(\tR\x06userId\"?\n" +
 	"\x18CreateMembershipResponse\x12#\n" +
-	"\rmembership_id\x18\x01 \x01(\x05R\fmembershipId\"4\n" +
+	"\rmembership_id\x18\x01 \x01(\tR\fmembershipId\"4\n" +
 	"\x19ListUserPortfoliosRequest\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\tR\x06userId\"^\n" +
 	"\x1aListUserPortfoliosResponse\x12@\n" +
 	"\n" +
 	"portfolios\x18\x01 \x03(\v2 .ambush.memberships.v1.PortfolioR\n" +
-	"portfolios\"\xd0\x02\n" +
+	"portfolios\"\xa2\x02\n" +
 	"\tPortfolio\x12#\n" +
-	"\rmembership_id\x18\x01 \x01(\x05R\fmembershipId\x127\n" +
+	"\rmembership_id\x18\x01 \x01(\tR\fmembershipId\x127\n" +
 	"\tjoined_at\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\bjoinedAt\x12\x17\n" +
-	"\arole_id\x18\x03 \x01(\x05R\x06roleId\x12\x1b\n" +
-	"\trole_name\x18\x04 \x01(\tR\broleName\x122\n" +
-	"\x13role_parent_role_id\x18\x05 \x01(\x05H\x00R\x10roleParentRoleId\x88\x01\x01\x12\x1d\n" +
-	"\n" +
-	"society_id\x18\x06 \x01(\x05R\tsocietyId\x12!\n" +
-	"\fsociety_name\x18\a \x01(\tR\vsocietyName\x12!\n" +
-	"\fsociety_slug\x18\b \x01(\tR\vsocietySlugB\x16\n" +
-	"\x14_role_parent_role_id2\x83\x02\n" +
+	"\arole_id\x18\x03 \x01(\tR\x06roleId\x12\x1b\n" +
+	"\trole_name\x18\x04 \x01(\tR\broleName\x12\x17\n" +
+	"\ateam_id\x18\x05 \x01(\tR\x06teamId\x12\x1b\n" +
+	"\tteam_name\x18\x06 \x01(\tR\bteamName\x12\x15\n" +
+	"\x06org_id\x18\a \x01(\tR\x05orgId\x12\x19\n" +
+	"\borg_name\x18\b \x01(\tR\aorgName\x12\x19\n" +
+	"\borg_slug\x18\t \x01(\tR\aorgSlug2\x83\x02\n" +
 	"\x11MembershipService\x12s\n" +
 	"\x10CreateMembership\x12..ambush.memberships.v1.CreateMembershipRequest\x1a/.ambush.memberships.v1.CreateMembershipResponse\x12y\n" +
 	"\x12ListUserPortfolios\x120.ambush.memberships.v1.ListUserPortfoliosRequest\x1a1.ambush.memberships.v1.ListUserPortfoliosResponseB\xd4\x01\n" +
@@ -388,7 +395,6 @@ func file_ambush_memberships_v1_memberships_proto_init() {
 	if File_ambush_memberships_v1_memberships_proto != nil {
 		return
 	}
-	file_ambush_memberships_v1_memberships_proto_msgTypes[4].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{

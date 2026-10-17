@@ -20,6 +20,7 @@ var (
 	ErrAlreadyMember          = errors.New("user already holds this role")
 	ErrPreviousHolderNotFound = errors.New("previous user does not hold this role")
 	ErrMembershipNotFound     = errors.New("membership not found")
+	ErrRootTeamRole           = errors.New("role is in the root team")
 )
 
 type Service struct {
@@ -35,6 +36,9 @@ type NewMembership struct {
 	OrgID  uuid.UUID
 	RoleID uuid.UUID
 	UserID uuid.UUID
+	// rejects roles in the org's root (exec) team. set for grpc clients, which
+	// can only staff the teams below exec
+	NonRootOnly bool
 }
 
 type MembershipPair struct {
@@ -89,14 +93,16 @@ func (s *Service) CreateMembership(
 	ctx context.Context, in NewMembership,
 ) (uuid.UUID, error) {
 	m, err := s.q.CreateMembership(ctx, db.CreateMembershipParams{
-		UserID: in.UserID,
-		RoleID: in.RoleID,
-		OrgID:  in.OrgID,
+		UserID:      in.UserID,
+		RoleID:      in.RoleID,
+		OrgID:       in.OrgID,
+		NonRootOnly: in.NonRootOnly,
 	})
 	// the insert selects the role, so no row back means the role isn't in that
-	// org, or the role, its team or the org is archived
+	// org, the role, its team or the org is archived, or (with NonRootOnly) the
+	// role is in the root team
 	if errors.Is(err, pgx.ErrNoRows) {
-		return uuid.Nil, ErrRoleNotInOrg
+		return uuid.Nil, s.whyCreateMissed(ctx, in)
 	}
 	if pgerr.IsUniqueViolation(err) {
 		return uuid.Nil, ErrAlreadyMember
@@ -106,6 +112,29 @@ func (s *Service) CreateMembership(
 	}
 
 	return m.ID, nil
+}
+
+// only the root team rule needs telling apart, everything else is not found
+func (s *Service) whyCreateMissed(ctx context.Context, in NewMembership) error {
+	if !in.NonRootOnly {
+		return ErrRoleNotInOrg
+	}
+
+	isRoot, err := s.q.IsRootTeamRole(ctx, db.IsRootTeamRoleParams{
+		RoleID: in.RoleID,
+		OrgID:  in.OrgID,
+	})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return ErrRoleNotInOrg
+	}
+	if err != nil {
+		return fmt.Errorf("check root team role: %w", err)
+	}
+	if isRoot {
+		return ErrRootTeamRole
+	}
+
+	return ErrRoleNotInOrg
 }
 
 func (s *Service) ListUserPortfolios(

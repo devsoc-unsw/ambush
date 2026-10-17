@@ -55,24 +55,29 @@ JOIN orgs o ON o.id = r.org_id AND o.archived_at IS NULL
 WHERE r.id = $3
   AND r.org_id = $4
   AND r.archived_at IS NULL
+  AND (NOT $5::boolean OR t.parent_id IS NOT NULL)
 RETURNING id, role_id, user_id, created_at, ended_at, term
 `
 
 type CreateMembershipParams struct {
-	UserID uuid.UUID
-	Term   pgtype.Text
-	RoleID uuid.UUID
-	OrgID  uuid.UUID
+	UserID      uuid.UUID
+	Term        pgtype.Text
+	RoleID      uuid.UUID
+	OrgID       uuid.UUID
+	NonRootOnly bool
 }
 
 // the inserts select the role, so nothing is inserted unless the role is in
-// that org and the role, its team and the org are all active
+// that org and the role, its team and the org are all active. with
+// non_root_only, roles in the root (exec) team are skipped too, which is how
+// grpc clients are kept out of exec
 func (q *Queries) CreateMembership(ctx context.Context, arg CreateMembershipParams) (Membership, error) {
 	row := q.db.QueryRow(ctx, createMembership,
 		arg.UserID,
 		arg.Term,
 		arg.RoleID,
 		arg.OrgID,
+		arg.NonRootOnly,
 	)
 	var i Membership
 	err := row.Scan(
@@ -173,6 +178,27 @@ func (q *Queries) EndRoleMemberships(ctx context.Context, arg EndRoleMemberships
 		return nil, err
 	}
 	return items, nil
+}
+
+const isRootTeamRole = `-- name: IsRootTeamRole :one
+SELECT (t.parent_id IS NULL)::boolean AS is_root
+FROM roles r
+JOIN teams t ON t.id = r.team_id
+WHERE r.id = $1 AND r.org_id = $2
+`
+
+type IsRootTeamRoleParams struct {
+	RoleID uuid.UUID
+	OrgID  uuid.UUID
+}
+
+// when the insert above misses, says whether the role exists in that org but
+// sits in the root team, so callers get a clearer error than not found
+func (q *Queries) IsRootTeamRole(ctx context.Context, arg IsRootTeamRoleParams) (bool, error) {
+	row := q.db.QueryRow(ctx, isRootTeamRole, arg.RoleID, arg.OrgID)
+	var is_root bool
+	err := row.Scan(&is_root)
+	return is_root, err
 }
 
 const listUserPortfolios = `-- name: ListUserPortfolios :many

@@ -42,13 +42,20 @@ func (s *GRPCServer) CreateMembership(
 		return nil, status.Error(codes.InvalidArgument, "user_id must be a uuid")
 	}
 
+	// grpc clients can only staff teams below exec. the frontend uses the http
+	// route, which has no such limit
 	id, err := s.svc.CreateMembership(ctx, NewMembership{
-		OrgID:  orgID,
-		RoleID: roleID,
-		UserID: userID,
+		OrgID:       orgID,
+		RoleID:      roleID,
+		UserID:      userID,
+		NonRootOnly: true,
 	})
 	if errors.Is(err, ErrRoleNotInOrg) {
 		return nil, status.Error(codes.NotFound, "role not found in org")
+	}
+	if errors.Is(err, ErrRootTeamRole) {
+		return nil, status.Error(codes.PermissionDenied,
+			"roles in the root team can't be assigned over grpc")
 	}
 	if errors.Is(err, ErrAlreadyMember) {
 		return nil, status.Error(codes.AlreadyExists, "user already holds this role")

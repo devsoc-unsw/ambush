@@ -1,5 +1,7 @@
 -- the inserts select the role, so nothing is inserted unless the role is in
--- that org and the role, its team and the org are all active
+-- that org and the role, its team and the org are all active. with
+-- non_root_only, roles in the root (exec) team are skipped too, which is how
+-- grpc clients are kept out of exec
 -- name: CreateMembership :one
 INSERT INTO memberships (role_id, user_id, term)
 SELECT r.id, sqlc.arg('user_id'), sqlc.narg('term')::text
@@ -9,7 +11,16 @@ JOIN orgs o ON o.id = r.org_id AND o.archived_at IS NULL
 WHERE r.id = sqlc.arg('role_id')
   AND r.org_id = sqlc.arg('org_id')
   AND r.archived_at IS NULL
+  AND (NOT sqlc.arg('non_root_only')::boolean OR t.parent_id IS NOT NULL)
 RETURNING *;
+
+-- when the insert above misses, says whether the role exists in that org but
+-- sits in the root team, so callers get a clearer error than not found
+-- name: IsRootTeamRole :one
+SELECT (t.parent_id IS NULL)::boolean AS is_root
+FROM roles r
+JOIN teams t ON t.id = r.team_id
+WHERE r.id = sqlc.arg('role_id') AND r.org_id = sqlc.arg('org_id');
 
 -- TODO: GetMembership :one
 

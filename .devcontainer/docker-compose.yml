@@ -71,6 +71,7 @@ services:
     ports:
       - "4433:4433" # Public API
       - "4434:4434" # Admin API (This port should be internal ONLYH)
+      - "4467:4467" # Kratos frontend
     volumes:
       - ../kratos:/etc/config/kratos:ro
     command: serve -c /etc/config/kratos/kratos.yml --dev --watch-courier

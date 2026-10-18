@@ -4,20 +4,20 @@ dsn: postgres://postgres:password@ambush-kratos-postgres:5432/kratos?sslmode=dis
 
 serve:
   public:
-    base_url: http://localhost:4433/
+    base_url: http://localhost:4433/ # address of kratos backend 
     cors:
       enabled: true # enable cross-origin http requests
   admin:
-    base_url: http://kratos:4434/
+    base_url: http://kratos:4434/ # address of admin kratos backedn
 
 session:
   whoami:
     required_aal: aal1 # 1 factor auth, change tgo aal2 for 2fa.
 
 selfservice:
-  default_browser_return_url: http://localhost:4455/ #if there isn't an allowed call back we return here, probs the devgsoc central hub, we could just always redirect to warchest 
+  default_browser_return_url: http://localhost:4467/ #if there isn't an allowed call back we return here, probs the devgsoc central hub, we could just always redirect to warchest 
   allowed_return_urls: # allow list of urls which we can redirect to
-    - http://localhost:3000/Callback
+    - http://localhost:3000/Callback # Ambush frontend callback
 
   methods: # the methods which we can use to login
     password: # enables password to be used to login
@@ -32,7 +32,7 @@ selfservice:
     #       # Set 'id' to the top-level domain.
     #       id: localhost
     #       # Set 'origin' to the exact URL of the page that prompts the user to use WebAuthn. You must include the scheme, host, and port.
-    #       origin: http://localhost:4455
+    #       origin: http://localhost:4467
 
     # passkey: # 2fa passkeys stubbing out for now
     #   enabled: true
@@ -43,7 +43,7 @@ selfservice:
     #       id: localhost
     #       # Set 'origin' to the exact URL of the page that prompts the user to use WebAuthn. You must include the scheme, host, and port.
     #       origins:
-    #         - http://localhost:4455
+    #         - http://localhost:4467
 
     # TODO: Finish setting up OIDC
     # oidc:
@@ -52,37 +52,37 @@ selfservice:
 
   flows:
     error:
-      ui_url: http://localhost:4455/error # on unrecoverable error redirects to this page
+      ui_url: http://localhost:4467/error # on unrecoverable error redirects to this page
 
     settings:
-      ui_url: http://localhost:4455/settings # url to let user manage their details
+      ui_url: http://localhost:4467/settings # url to let user manage their details
       privileged_session_max_age: 15m
       required_aal: aal1
 
     recovery:
       enabled: true
-      ui_url: http://localhost:4455/recovery # password recover flows
+      ui_url: http://localhost:4467/recovery # password recover flows
       use: code # code -> send an otp for recovery instead of a magic link
 
     verification:
       enabled: false # enable in prod, validates emails are real when set to true
-      ui_url: http://localhost:4455/verification
+      ui_url: http://localhost:4467/verification
       use: code
       after:
-        default_browser_return_url: http://localhost:4455/
+        default_browser_return_url: http://localhost:4467/
 
     logout:
       after:
-        default_browser_return_url: http://localhost:4455/login
+        default_browser_return_url: http://localhost:4467/login
 
     login:
-      ui_url: http://localhost:4455/login # the page used to login
+      ui_url: http://localhost:4467/login # the page used to login
       lifespan: 10m
 
     registration:
       enable_legacy_one_step: false
       lifespan: 10m
-      ui_url: http://localhost:4455/registration # page used to register a new user
+      ui_url: http://localhost:4467/registration # page used to register a new user
       after:
         passkey:
           hooks:

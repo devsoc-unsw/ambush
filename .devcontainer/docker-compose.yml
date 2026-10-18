@@ -47,6 +47,47 @@ services:
       migrate:
         condition: service_completed_successfully
 
+  # Migrate kratos db without thinking
+  kratos-migrate:
+    image: oryd/kratos:v1.3.0
+    environment:
+      - DSN=postgres://postgres:password@ambush-kratos-postgres:5432/kratos?sslmode=disable&max_conns=20&max_idle_conns=4
+    volumes:
+      - ../kratos:/etc/config/kratos:ro #path to our kratos configs
+    command: -c /etc/config/kratos/kratos.yml migrate sql -e --yes #path to kratos.yml
+    networks:
+      - devsoc-network
+    depends_on:
+      ambush-kratos-postgres:
+        condition: service_healthy
+
+  kratos:
+    image: oryd/kratos:v1.3.0
+    environment:
+      - DSN=postgres://postgres:password@ambush-kratos-postgres:5432/kratos?sslmode=disable&max_conns=20&max_idle_conns=4
+    depends_on:
+      kratos-migrate:
+        condition: service_completed_successfully
+    ports:
+      - "4433:4433" # Public API
+      - "4434:4434" # Admin API (This port should be internal ONLYH)
+      - "4467:4467" # Kratos frontend
+    volumes:
+      - ../kratos:/etc/config/kratos:ro
+    command: serve -c /etc/config/kratos/kratos.yml --dev --watch-courier
+    restart: unless-stopped
+    networks:
+      - devsoc-network
+
+  # Local SMTP catcher for verification / recovery emails
+  mailpit:
+    image: axllent/mailpit:latest
+    ports:
+      - "1025:1025" # SMTP
+      - "8025:8025" # Web UI
+    networks:
+      - devsoc-network
+
   migrate:
     image: authzed/spicedb
     command: datastore migrate head
@@ -95,10 +136,29 @@ services:
       timeout: 5s
       retries: 5
     command: postgres -c track_commit_timestamp=on # flag needed for spicedb
+  
+  ambush-kratos-postgres:
+    image: postgres:18-alpine
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=kratos
+    ports:
+      - "6767:5432" 
+    networks:
+      - devsoc-network
+    volumes:
+      - kratos_postgres_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
 volumes:
   metadata_postgres_data:
   spicedb_postgres_data:
+  kratos_postgres_data:
 
 networks:
   devsoc-network:

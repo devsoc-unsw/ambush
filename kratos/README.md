@@ -2,6 +2,12 @@
 # Adapted from https://github.com/ory/kratos/blob/master/contrib/quickstart/kratos/all-strategies
 
 ## For Frontend Developers
+See kratos.yml -> flows
+
+/login -> page to login
+/registration -> page to register
+
+see kratos.yml for rest
 
 
 ## For Dev-Ops

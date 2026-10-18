@@ -58,3 +58,4 @@ For the backend: `cd backend` then `go run .` (see `backend/db/README.md` for th
 | metadata Postgres (`meta_ambush`) | 5432 |
 | SpiceDB (gRPC) | 50067 |
 | SpiceDB Postgres (`spice_ambush`) | 5467 |
+| Kratos Frontend | 

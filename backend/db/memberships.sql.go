@@ -16,24 +16,29 @@ const archiveMembership = `-- name: ArchiveMembership :one
 UPDATE memberships m
 SET ended_at = COALESCE(m.ended_at, now())
 FROM roles r
+JOIN teams t ON t.id = r.team_id
 JOIN orgs o ON o.id = r.org_id AND o.archived_at IS NULL
 WHERE m.id = $1
   AND r.id = m.role_id
   AND r.org_id = $2
+  AND (NOT $3::boolean OR t.parent_id IS NOT NULL)
 RETURNING m.id, m.role_id, m.user_id, m.created_at, m.ended_at, m.term
 `
 
 type ArchiveMembershipParams struct {
 	MembershipID uuid.UUID
 	OrgID        uuid.UUID
+	NonRootOnly  bool
 }
 
 // ends a membership. COALESCE keeps the original time, so archiving twice is
 // a no-op. joining through roles scopes it to the org in the path, and
 // archived orgs are read only. archived roles and teams are allowed, so their
 // leftover memberships can still be ended
+// with non_root_only, memberships in the root (exec) team are skipped, same as
+// CreateMembership
 func (q *Queries) ArchiveMembership(ctx context.Context, arg ArchiveMembershipParams) (Membership, error) {
-	row := q.db.QueryRow(ctx, archiveMembership, arg.MembershipID, arg.OrgID)
+	row := q.db.QueryRow(ctx, archiveMembership, arg.MembershipID, arg.OrgID, arg.NonRootOnly)
 	var i Membership
 	err := row.Scan(
 		&i.ID,
@@ -265,4 +270,46 @@ func (q *Queries) ListUserPortfolios(ctx context.Context, userID uuid.UUID) ([]L
 		return nil, err
 	}
 	return items, nil
+}
+
+const lockMembershipInOrg = `-- name: LockMembershipInOrg :one
+SELECT m.id, m.role_id, m.user_id, m.term, m.ended_at,
+       (t.parent_id IS NULL)::boolean AS in_root_team
+FROM memberships m
+JOIN roles r ON r.id = m.role_id
+JOIN teams t ON t.id = r.team_id
+JOIN orgs o ON o.id = r.org_id AND o.archived_at IS NULL
+WHERE m.id = $1 AND r.org_id = $2
+FOR UPDATE OF m
+`
+
+type LockMembershipInOrgParams struct {
+	MembershipID uuid.UUID
+	OrgID        uuid.UUID
+}
+
+type LockMembershipInOrgRow struct {
+	ID         uuid.UUID
+	RoleID     uuid.UUID
+	UserID     uuid.UUID
+	Term       pgtype.Text
+	EndedAt    pgtype.Timestamptz
+	InRootTeam bool
+}
+
+// loads a membership in an org (not archived) with whether it sits in the root
+// team, and locks it so a role change can't race another change to the same
+// membership. outside a transaction the lock is released straight away
+func (q *Queries) LockMembershipInOrg(ctx context.Context, arg LockMembershipInOrgParams) (LockMembershipInOrgRow, error) {
+	row := q.db.QueryRow(ctx, lockMembershipInOrg, arg.MembershipID, arg.OrgID)
+	var i LockMembershipInOrgRow
+	err := row.Scan(
+		&i.ID,
+		&i.RoleID,
+		&i.UserID,
+		&i.Term,
+		&i.EndedAt,
+		&i.InRootTeam,
+	)
+	return i, err
 }

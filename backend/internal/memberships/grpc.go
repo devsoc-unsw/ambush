@@ -13,6 +13,10 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
+// grpc clients can only manage memberships in teams below exec, so every
+// write here sets NonRootOnly. the frontend uses the http routes, which have
+// no such limit
+
 type GRPCServer struct {
 	membershipsv1.UnimplementedMembershipServiceServer
 	svc *Service
@@ -29,57 +33,109 @@ func (s *GRPCServer) Register(srv *grpc.Server) {
 func (s *GRPCServer) CreateMembership(
 	ctx context.Context, req *membershipsv1.CreateMembershipRequest,
 ) (*membershipsv1.CreateMembershipResponse, error) {
-	orgID, err := uuid.Parse(req.GetOrgId())
+	orgID, err := parseUUID("org_id", req.GetOrgId())
 	if err != nil {
-		return nil, status.Error(codes.InvalidArgument, "org_id must be a uuid")
+		return nil, err
 	}
-	roleID, err := uuid.Parse(req.GetRoleId())
+	roleID, err := parseUUID("role_id", req.GetRoleId())
 	if err != nil {
-		return nil, status.Error(codes.InvalidArgument, "role_id must be a uuid")
+		return nil, err
 	}
-	userID, err := uuid.Parse(req.GetUserId())
+	userID, err := parseUUID("user_id", req.GetUserId())
 	if err != nil {
-		return nil, status.Error(codes.InvalidArgument, "user_id must be a uuid")
+		return nil, err
 	}
 
-	// grpc clients can only staff teams below exec. the frontend uses the http
-	// route, which has no such limit
 	id, err := s.svc.CreateMembership(ctx, NewMembership{
 		OrgID:       orgID,
 		RoleID:      roleID,
 		UserID:      userID,
 		NonRootOnly: true,
 	})
-	if errors.Is(err, ErrRoleNotInOrg) {
-		return nil, status.Error(codes.NotFound, "role not found in org")
-	}
-	if errors.Is(err, ErrRootTeamRole) {
-		return nil, status.Error(codes.PermissionDenied,
-			"roles in the root team can't be assigned over grpc")
-	}
-	if errors.Is(err, ErrAlreadyMember) {
-		return nil, status.Error(codes.AlreadyExists, "user already holds this role")
-	}
 	if err != nil {
-		log.Printf("create membership: %v", err)
-		return nil, status.Error(codes.Internal, "could not create membership")
+		return nil, toStatus("create membership", err)
 	}
 
 	return &membershipsv1.CreateMembershipResponse{MembershipId: id.String()}, nil
 }
 
+func (s *GRPCServer) ChangeMembershipRole(
+	ctx context.Context, req *membershipsv1.ChangeMembershipRoleRequest,
+) (*membershipsv1.ChangeMembershipRoleResponse, error) {
+	orgID, err := parseUUID("org_id", req.GetOrgId())
+	if err != nil {
+		return nil, err
+	}
+	membershipID, err := parseUUID("membership_id", req.GetMembershipId())
+	if err != nil {
+		return nil, err
+	}
+	roleID, err := parseUUID("role_id", req.GetRoleId())
+	if err != nil {
+		return nil, err
+	}
+	// term is optional in the proto, so the generated field is nil when unset
+	if req.Term != nil && req.GetTerm() == "" {
+		return nil, status.Error(codes.InvalidArgument,
+			"term can't be empty, leave it out to keep the old term")
+	}
+
+	res, err := s.svc.ChangeMembershipRole(ctx, RoleChange{
+		OrgID:        orgID,
+		MembershipID: membershipID,
+		NewRoleID:    roleID,
+		Term:         req.Term,
+		NonRootOnly:  true,
+	})
+	if err != nil {
+		return nil, toStatus("change membership role", err)
+	}
+
+	return &membershipsv1.ChangeMembershipRoleResponse{
+		EndedMembershipId: res.EndedMembershipID.String(),
+		MembershipId:      res.MembershipID.String(),
+	}, nil
+}
+
+func (s *GRPCServer) ArchiveMembership(
+	ctx context.Context, req *membershipsv1.ArchiveMembershipRequest,
+) (*membershipsv1.ArchiveMembershipResponse, error) {
+	orgID, err := parseUUID("org_id", req.GetOrgId())
+	if err != nil {
+		return nil, err
+	}
+	membershipID, err := parseUUID("membership_id", req.GetMembershipId())
+	if err != nil {
+		return nil, err
+	}
+
+	m, err := s.svc.ArchiveMembership(ctx, ArchiveInput{
+		OrgID:        orgID,
+		MembershipID: membershipID,
+		NonRootOnly:  true,
+	})
+	if err != nil {
+		return nil, toStatus("archive membership", err)
+	}
+
+	// archiving always sets ended_at, so it's never nil here
+	return &membershipsv1.ArchiveMembershipResponse{
+		MembershipId: m.ID.String(),
+		EndedAt:      timestamppb.New(*m.EndedAt),
+	}, nil
+}
+
 func (s *GRPCServer) ListUserPortfolios(
 	ctx context.Context, req *membershipsv1.ListUserPortfoliosRequest,
 ) (*membershipsv1.ListUserPortfoliosResponse, error) {
-	userID, err := uuid.Parse(req.GetUserId())
+	userID, err := parseUUID("user_id", req.GetUserId())
 	if err != nil {
-		return nil, status.Error(codes.InvalidArgument, "user_id must be a uuid")
+		return nil, err
 	}
 
 	rows, err := s.svc.ListUserPortfolios(ctx, userID)
 	if err != nil {
-		log.Printf("list user portfolios: %v", err)
-		return nil, status.Error(codes.Internal, "could not list portfolios")
+		return nil, toStatus("list user portfolios", err)
 	}
 
 	portfolios := make([]*membershipsv1.Portfolio, len(rows))
@@ -98,4 +154,37 @@ func (s *GRPCServer) ListUserPortfolios(
 	}
 
 	return &membershipsv1.ListUserPortfoliosResponse{Portfolios: portfolios}, nil
+}
+
+func parseUUID(field, v string) (uuid.UUID, error) {
+	id, err := uuid.Parse(v)
+	if err != nil {
+		return uuid.Nil, status.Error(codes.InvalidArgument, field+" must be a uuid")
+	}
+	return id, nil
+}
+
+// toStatus maps service errors to grpc codes. anything unexpected is logged
+// and hidden behind Internal
+func toStatus(op string, err error) error {
+	switch {
+	case errors.Is(err, ErrRoleNotInOrg):
+		return status.Error(codes.NotFound, "role not found in org")
+	case errors.Is(err, ErrMembershipNotFound):
+		return status.Error(codes.NotFound, "membership not found in org")
+	case errors.Is(err, ErrRootTeamRole):
+		return status.Error(codes.PermissionDenied,
+			"memberships in the root team can't be managed over grpc")
+	case errors.Is(err, ErrAlreadyMember):
+		return status.Error(codes.AlreadyExists, "user already holds this role")
+	case errors.Is(err, ErrMembershipEnded):
+		return status.Error(codes.FailedPrecondition,
+			"membership has already ended")
+	case errors.Is(err, ErrSameRole):
+		return status.Error(codes.InvalidArgument,
+			"membership already has this role")
+	default:
+		log.Printf("%s: %v", op, err)
+		return status.Error(codes.Internal, "could not "+op)
+	}
 }

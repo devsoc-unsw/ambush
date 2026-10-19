@@ -21,6 +21,8 @@ var (
 	ErrPreviousHolderNotFound = errors.New("previous user does not hold this role")
 	ErrMembershipNotFound     = errors.New("membership not found")
 	ErrRootTeamRole           = errors.New("role is in the root team")
+	ErrMembershipEnded        = errors.New("membership has already ended")
+	ErrSameRole               = errors.New("membership already has this role")
 )
 
 type Service struct {
@@ -274,22 +276,148 @@ func (s *Service) HandoverRole(
 	return HandoverResult{MembershipID: m.ID, Ended: len(ended)}, nil
 }
 
+type ArchiveInput struct {
+	OrgID        uuid.UUID
+	MembershipID uuid.UUID
+	// rejects memberships in the org's root (exec) team, for grpc clients
+	NonRootOnly bool
+}
+
 // ArchiveMembership ends a membership. Archiving it again is a no-op.
 func (s *Service) ArchiveMembership(
-	ctx context.Context, orgID, membershipID uuid.UUID,
+	ctx context.Context, in ArchiveInput,
 ) (Membership, error) {
 	m, err := s.q.ArchiveMembership(ctx, db.ArchiveMembershipParams{
-		MembershipID: membershipID,
-		OrgID:        orgID,
+		MembershipID: in.MembershipID,
+		OrgID:        in.OrgID,
+		NonRootOnly:  in.NonRootOnly,
 	})
-	// no row back covers a missing membership, one from another org, and an
-	// archived org
+	// no row back covers a missing membership, one from another org, an
+	// archived org, and (with NonRootOnly) one in the root team
 	if errors.Is(err, pgx.ErrNoRows) {
-		return Membership{}, ErrMembershipNotFound
+		return Membership{}, s.whyArchiveMissed(ctx, in)
 	}
 	if err != nil {
 		return Membership{}, fmt.Errorf("archive membership: %w", err)
 	}
 
 	return toMembership(m), nil
+}
+
+// only the root team rule needs telling apart, everything else is not found
+func (s *Service) whyArchiveMissed(ctx context.Context, in ArchiveInput) error {
+	if !in.NonRootOnly {
+		return ErrMembershipNotFound
+	}
+
+	m, err := s.q.LockMembershipInOrg(ctx, db.LockMembershipInOrgParams{
+		MembershipID: in.MembershipID,
+		OrgID:        in.OrgID,
+	})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return ErrMembershipNotFound
+	}
+	if err != nil {
+		return fmt.Errorf("get membership: %w", err)
+	}
+	if m.InRootTeam {
+		return ErrRootTeamRole
+	}
+
+	return ErrMembershipNotFound
+}
+
+type RoleChange struct {
+	OrgID        uuid.UUID
+	MembershipID uuid.UUID
+	NewRoleID    uuid.UUID
+	// nil keeps the old membership's term
+	Term *string
+	// rejects moving out of or into the org's root (exec) team, for grpc
+	// clients
+	NonRootOnly bool
+}
+
+type RoleChangeResult struct {
+	EndedMembershipID uuid.UUID
+	MembershipID      uuid.UUID
+}
+
+// ChangeMembershipRole moves someone to a different role, e.g. Subcom to
+// Director. The old membership is ended and a new one started in the same
+// transaction, so history keeps who held which role when.
+func (s *Service) ChangeMembershipRole(
+	ctx context.Context, in RoleChange,
+) (RoleChangeResult, error) {
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return RoleChangeResult{}, fmt.Errorf("begin tx: %w", err)
+	}
+	defer tx.Rollback(ctx)
+
+	q := s.q.WithTx(tx)
+
+	old, err := q.LockMembershipInOrg(ctx, db.LockMembershipInOrgParams{
+		MembershipID: in.MembershipID,
+		OrgID:        in.OrgID,
+	})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return RoleChangeResult{}, ErrMembershipNotFound
+	}
+	if err != nil {
+		return RoleChangeResult{}, fmt.Errorf("lock membership: %w", err)
+	}
+	switch {
+	case old.EndedAt.Valid:
+		return RoleChangeResult{}, ErrMembershipEnded
+	case in.NonRootOnly && old.InRootTeam:
+		return RoleChangeResult{}, ErrRootTeamRole
+	case old.RoleID == in.NewRoleID:
+		return RoleChangeResult{}, ErrSameRole
+	}
+
+	// a user holds a role at most once at a time, so this ends exactly the
+	// locked membership
+	_, err = q.EndRoleMemberships(ctx, db.EndRoleMembershipsParams{
+		RoleID: old.RoleID,
+		UserID: uuid.NullUUID{UUID: old.UserID, Valid: true},
+	})
+	if err != nil {
+		return RoleChangeResult{}, fmt.Errorf("end membership: %w", err)
+	}
+
+	term := old.Term
+	if in.Term != nil {
+		term = pgtype.Text{String: *in.Term, Valid: true}
+	}
+	newIn := NewMembership{
+		OrgID:       in.OrgID,
+		RoleID:      in.NewRoleID,
+		UserID:      old.UserID,
+		NonRootOnly: in.NonRootOnly,
+	}
+	m, err := q.CreateMembership(ctx, db.CreateMembershipParams{
+		UserID:      newIn.UserID,
+		Term:        term,
+		RoleID:      newIn.RoleID,
+		OrgID:       newIn.OrgID,
+		NonRootOnly: newIn.NonRootOnly,
+	})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return RoleChangeResult{}, s.whyCreateMissed(ctx, newIn)
+	}
+	// the user already holds the new role in another membership
+	if pgerr.IsUniqueViolation(err) {
+		return RoleChangeResult{}, ErrAlreadyMember
+	}
+	if err != nil {
+		return RoleChangeResult{}, fmt.Errorf("create membership: %w", err)
+	}
+
+	err = tx.Commit(ctx)
+	if err != nil {
+		return RoleChangeResult{}, fmt.Errorf("commit: %w", err)
+	}
+
+	return RoleChangeResult{EndedMembershipID: old.ID, MembershipID: m.ID}, nil
 }

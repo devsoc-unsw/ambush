@@ -19,17 +19,25 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	MembershipService_CreateMembership_FullMethodName   = "/ambush.memberships.v1.MembershipService/CreateMembership"
-	MembershipService_ListUserPortfolios_FullMethodName = "/ambush.memberships.v1.MembershipService/ListUserPortfolios"
+	MembershipService_CreateMembership_FullMethodName     = "/ambush.memberships.v1.MembershipService/CreateMembership"
+	MembershipService_ChangeMembershipRole_FullMethodName = "/ambush.memberships.v1.MembershipService/ChangeMembershipRole"
+	MembershipService_ArchiveMembership_FullMethodName    = "/ambush.memberships.v1.MembershipService/ArchiveMembership"
+	MembershipService_ListUserPortfolios_FullMethodName   = "/ambush.memberships.v1.MembershipService/ListUserPortfolios"
 )
 
 // MembershipServiceClient is the client API for MembershipService service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 //
-// all ids are uuid strings
+// all ids are uuid strings. memberships in an org's root (exec) team can't be
+// created, changed or archived through this service
 type MembershipServiceClient interface {
 	CreateMembership(ctx context.Context, in *CreateMembershipRequest, opts ...grpc.CallOption) (*CreateMembershipResponse, error)
+	// moves a member to a different role, e.g. Subcom to Director. the old
+	// membership is ended and a new one started, so the response has a new id
+	ChangeMembershipRole(ctx context.Context, in *ChangeMembershipRoleRequest, opts ...grpc.CallOption) (*ChangeMembershipRoleResponse, error)
+	// ends a membership. archiving one that has already ended is a no-op
+	ArchiveMembership(ctx context.Context, in *ArchiveMembershipRequest, opts ...grpc.CallOption) (*ArchiveMembershipResponse, error)
 	// "given a person, which portfolios are they part of?"
 	ListUserPortfolios(ctx context.Context, in *ListUserPortfoliosRequest, opts ...grpc.CallOption) (*ListUserPortfoliosResponse, error)
 }
@@ -52,6 +60,26 @@ func (c *membershipServiceClient) CreateMembership(ctx context.Context, in *Crea
 	return out, nil
 }
 
+func (c *membershipServiceClient) ChangeMembershipRole(ctx context.Context, in *ChangeMembershipRoleRequest, opts ...grpc.CallOption) (*ChangeMembershipRoleResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ChangeMembershipRoleResponse)
+	err := c.cc.Invoke(ctx, MembershipService_ChangeMembershipRole_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *membershipServiceClient) ArchiveMembership(ctx context.Context, in *ArchiveMembershipRequest, opts ...grpc.CallOption) (*ArchiveMembershipResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ArchiveMembershipResponse)
+	err := c.cc.Invoke(ctx, MembershipService_ArchiveMembership_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *membershipServiceClient) ListUserPortfolios(ctx context.Context, in *ListUserPortfoliosRequest, opts ...grpc.CallOption) (*ListUserPortfoliosResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(ListUserPortfoliosResponse)
@@ -66,9 +94,15 @@ func (c *membershipServiceClient) ListUserPortfolios(ctx context.Context, in *Li
 // All implementations must embed UnimplementedMembershipServiceServer
 // for forward compatibility.
 //
-// all ids are uuid strings
+// all ids are uuid strings. memberships in an org's root (exec) team can't be
+// created, changed or archived through this service
 type MembershipServiceServer interface {
 	CreateMembership(context.Context, *CreateMembershipRequest) (*CreateMembershipResponse, error)
+	// moves a member to a different role, e.g. Subcom to Director. the old
+	// membership is ended and a new one started, so the response has a new id
+	ChangeMembershipRole(context.Context, *ChangeMembershipRoleRequest) (*ChangeMembershipRoleResponse, error)
+	// ends a membership. archiving one that has already ended is a no-op
+	ArchiveMembership(context.Context, *ArchiveMembershipRequest) (*ArchiveMembershipResponse, error)
 	// "given a person, which portfolios are they part of?"
 	ListUserPortfolios(context.Context, *ListUserPortfoliosRequest) (*ListUserPortfoliosResponse, error)
 	mustEmbedUnimplementedMembershipServiceServer()
@@ -83,6 +117,12 @@ type UnimplementedMembershipServiceServer struct{}
 
 func (UnimplementedMembershipServiceServer) CreateMembership(context.Context, *CreateMembershipRequest) (*CreateMembershipResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method CreateMembership not implemented")
+}
+func (UnimplementedMembershipServiceServer) ChangeMembershipRole(context.Context, *ChangeMembershipRoleRequest) (*ChangeMembershipRoleResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ChangeMembershipRole not implemented")
+}
+func (UnimplementedMembershipServiceServer) ArchiveMembership(context.Context, *ArchiveMembershipRequest) (*ArchiveMembershipResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ArchiveMembership not implemented")
 }
 func (UnimplementedMembershipServiceServer) ListUserPortfolios(context.Context, *ListUserPortfoliosRequest) (*ListUserPortfoliosResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListUserPortfolios not implemented")
@@ -126,6 +166,42 @@ func _MembershipService_CreateMembership_Handler(srv interface{}, ctx context.Co
 	return interceptor(ctx, in, info, handler)
 }
 
+func _MembershipService_ChangeMembershipRole_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ChangeMembershipRoleRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MembershipServiceServer).ChangeMembershipRole(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MembershipService_ChangeMembershipRole_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MembershipServiceServer).ChangeMembershipRole(ctx, req.(*ChangeMembershipRoleRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _MembershipService_ArchiveMembership_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ArchiveMembershipRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MembershipServiceServer).ArchiveMembership(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MembershipService_ArchiveMembership_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MembershipServiceServer).ArchiveMembership(ctx, req.(*ArchiveMembershipRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _MembershipService_ListUserPortfolios_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ListUserPortfoliosRequest)
 	if err := dec(in); err != nil {
@@ -154,6 +230,14 @@ var MembershipService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "CreateMembership",
 			Handler:    _MembershipService_CreateMembership_Handler,
+		},
+		{
+			MethodName: "ChangeMembershipRole",
+			Handler:    _MembershipService_ChangeMembershipRole_Handler,
+		},
+		{
+			MethodName: "ArchiveMembership",
+			Handler:    _MembershipService_ArchiveMembership_Handler,
 		},
 		{
 			MethodName: "ListUserPortfolios",

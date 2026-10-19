@@ -78,12 +78,29 @@ RETURNING id;
 -- a no-op. joining through roles scopes it to the org in the path, and
 -- archived orgs are read only. archived roles and teams are allowed, so their
 -- leftover memberships can still be ended
+-- with non_root_only, memberships in the root (exec) team are skipped, same as
+-- CreateMembership
 -- name: ArchiveMembership :one
 UPDATE memberships m
 SET ended_at = COALESCE(m.ended_at, now())
 FROM roles r
+JOIN teams t ON t.id = r.team_id
 JOIN orgs o ON o.id = r.org_id AND o.archived_at IS NULL
 WHERE m.id = sqlc.arg('membership_id')
   AND r.id = m.role_id
   AND r.org_id = sqlc.arg('org_id')
+  AND (NOT sqlc.arg('non_root_only')::boolean OR t.parent_id IS NOT NULL)
 RETURNING m.*;
+
+-- loads a membership in an org (not archived) with whether it sits in the root
+-- team, and locks it so a role change can't race another change to the same
+-- membership. outside a transaction the lock is released straight away
+-- name: LockMembershipInOrg :one
+SELECT m.id, m.role_id, m.user_id, m.term, m.ended_at,
+       (t.parent_id IS NULL)::boolean AS in_root_team
+FROM memberships m
+JOIN roles r ON r.id = m.role_id
+JOIN teams t ON t.id = r.team_id
+JOIN orgs o ON o.id = r.org_id AND o.archived_at IS NULL
+WHERE m.id = sqlc.arg('membership_id') AND r.org_id = sqlc.arg('org_id')
+FOR UPDATE OF m;

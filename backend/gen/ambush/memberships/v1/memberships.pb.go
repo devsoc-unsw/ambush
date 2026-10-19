@@ -126,6 +126,230 @@ func (x *CreateMembershipResponse) GetMembershipId() string {
 	return ""
 }
 
+type ChangeMembershipRoleRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	OrgId         string                 `protobuf:"bytes,1,opt,name=org_id,json=orgId,proto3" json:"org_id,omitempty"`
+	MembershipId  string                 `protobuf:"bytes,2,opt,name=membership_id,json=membershipId,proto3" json:"membership_id,omitempty"`
+	RoleId        string                 `protobuf:"bytes,3,opt,name=role_id,json=roleId,proto3" json:"role_id,omitempty"` // the new role
+	Term          *string                `protobuf:"bytes,4,opt,name=term,proto3,oneof" json:"term,omitempty"`             // left out keeps the old membership's term
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ChangeMembershipRoleRequest) Reset() {
+	*x = ChangeMembershipRoleRequest{}
+	mi := &file_ambush_memberships_v1_memberships_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ChangeMembershipRoleRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ChangeMembershipRoleRequest) ProtoMessage() {}
+
+func (x *ChangeMembershipRoleRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_ambush_memberships_v1_memberships_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ChangeMembershipRoleRequest.ProtoReflect.Descriptor instead.
+func (*ChangeMembershipRoleRequest) Descriptor() ([]byte, []int) {
+	return file_ambush_memberships_v1_memberships_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *ChangeMembershipRoleRequest) GetOrgId() string {
+	if x != nil {
+		return x.OrgId
+	}
+	return ""
+}
+
+func (x *ChangeMembershipRoleRequest) GetMembershipId() string {
+	if x != nil {
+		return x.MembershipId
+	}
+	return ""
+}
+
+func (x *ChangeMembershipRoleRequest) GetRoleId() string {
+	if x != nil {
+		return x.RoleId
+	}
+	return ""
+}
+
+func (x *ChangeMembershipRoleRequest) GetTerm() string {
+	if x != nil && x.Term != nil {
+		return *x.Term
+	}
+	return ""
+}
+
+type ChangeMembershipRoleResponse struct {
+	state             protoimpl.MessageState `protogen:"open.v1"`
+	EndedMembershipId string                 `protobuf:"bytes,1,opt,name=ended_membership_id,json=endedMembershipId,proto3" json:"ended_membership_id,omitempty"`
+	MembershipId      string                 `protobuf:"bytes,2,opt,name=membership_id,json=membershipId,proto3" json:"membership_id,omitempty"` // the new membership
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
+}
+
+func (x *ChangeMembershipRoleResponse) Reset() {
+	*x = ChangeMembershipRoleResponse{}
+	mi := &file_ambush_memberships_v1_memberships_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ChangeMembershipRoleResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ChangeMembershipRoleResponse) ProtoMessage() {}
+
+func (x *ChangeMembershipRoleResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_ambush_memberships_v1_memberships_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ChangeMembershipRoleResponse.ProtoReflect.Descriptor instead.
+func (*ChangeMembershipRoleResponse) Descriptor() ([]byte, []int) {
+	return file_ambush_memberships_v1_memberships_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *ChangeMembershipRoleResponse) GetEndedMembershipId() string {
+	if x != nil {
+		return x.EndedMembershipId
+	}
+	return ""
+}
+
+func (x *ChangeMembershipRoleResponse) GetMembershipId() string {
+	if x != nil {
+		return x.MembershipId
+	}
+	return ""
+}
+
+type ArchiveMembershipRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	OrgId         string                 `protobuf:"bytes,1,opt,name=org_id,json=orgId,proto3" json:"org_id,omitempty"`
+	MembershipId  string                 `protobuf:"bytes,2,opt,name=membership_id,json=membershipId,proto3" json:"membership_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ArchiveMembershipRequest) Reset() {
+	*x = ArchiveMembershipRequest{}
+	mi := &file_ambush_memberships_v1_memberships_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ArchiveMembershipRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ArchiveMembershipRequest) ProtoMessage() {}
+
+func (x *ArchiveMembershipRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_ambush_memberships_v1_memberships_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ArchiveMembershipRequest.ProtoReflect.Descriptor instead.
+func (*ArchiveMembershipRequest) Descriptor() ([]byte, []int) {
+	return file_ambush_memberships_v1_memberships_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *ArchiveMembershipRequest) GetOrgId() string {
+	if x != nil {
+		return x.OrgId
+	}
+	return ""
+}
+
+func (x *ArchiveMembershipRequest) GetMembershipId() string {
+	if x != nil {
+		return x.MembershipId
+	}
+	return ""
+}
+
+type ArchiveMembershipResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	MembershipId  string                 `protobuf:"bytes,1,opt,name=membership_id,json=membershipId,proto3" json:"membership_id,omitempty"`
+	EndedAt       *timestamppb.Timestamp `protobuf:"bytes,2,opt,name=ended_at,json=endedAt,proto3" json:"ended_at,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ArchiveMembershipResponse) Reset() {
+	*x = ArchiveMembershipResponse{}
+	mi := &file_ambush_memberships_v1_memberships_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ArchiveMembershipResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ArchiveMembershipResponse) ProtoMessage() {}
+
+func (x *ArchiveMembershipResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_ambush_memberships_v1_memberships_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ArchiveMembershipResponse.ProtoReflect.Descriptor instead.
+func (*ArchiveMembershipResponse) Descriptor() ([]byte, []int) {
+	return file_ambush_memberships_v1_memberships_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *ArchiveMembershipResponse) GetMembershipId() string {
+	if x != nil {
+		return x.MembershipId
+	}
+	return ""
+}
+
+func (x *ArchiveMembershipResponse) GetEndedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.EndedAt
+	}
+	return nil
+}
+
 type ListUserPortfoliosRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	UserId        string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"` // provided by ory
@@ -135,7 +359,7 @@ type ListUserPortfoliosRequest struct {
 
 func (x *ListUserPortfoliosRequest) Reset() {
 	*x = ListUserPortfoliosRequest{}
-	mi := &file_ambush_memberships_v1_memberships_proto_msgTypes[2]
+	mi := &file_ambush_memberships_v1_memberships_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -147,7 +371,7 @@ func (x *ListUserPortfoliosRequest) String() string {
 func (*ListUserPortfoliosRequest) ProtoMessage() {}
 
 func (x *ListUserPortfoliosRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_ambush_memberships_v1_memberships_proto_msgTypes[2]
+	mi := &file_ambush_memberships_v1_memberships_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -160,7 +384,7 @@ func (x *ListUserPortfoliosRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListUserPortfoliosRequest.ProtoReflect.Descriptor instead.
 func (*ListUserPortfoliosRequest) Descriptor() ([]byte, []int) {
-	return file_ambush_memberships_v1_memberships_proto_rawDescGZIP(), []int{2}
+	return file_ambush_memberships_v1_memberships_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *ListUserPortfoliosRequest) GetUserId() string {
@@ -179,7 +403,7 @@ type ListUserPortfoliosResponse struct {
 
 func (x *ListUserPortfoliosResponse) Reset() {
 	*x = ListUserPortfoliosResponse{}
-	mi := &file_ambush_memberships_v1_memberships_proto_msgTypes[3]
+	mi := &file_ambush_memberships_v1_memberships_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -191,7 +415,7 @@ func (x *ListUserPortfoliosResponse) String() string {
 func (*ListUserPortfoliosResponse) ProtoMessage() {}
 
 func (x *ListUserPortfoliosResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_ambush_memberships_v1_memberships_proto_msgTypes[3]
+	mi := &file_ambush_memberships_v1_memberships_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -204,7 +428,7 @@ func (x *ListUserPortfoliosResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListUserPortfoliosResponse.ProtoReflect.Descriptor instead.
 func (*ListUserPortfoliosResponse) Descriptor() ([]byte, []int) {
-	return file_ambush_memberships_v1_memberships_proto_rawDescGZIP(), []int{3}
+	return file_ambush_memberships_v1_memberships_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *ListUserPortfoliosResponse) GetPortfolios() []*Portfolio {
@@ -232,7 +456,7 @@ type Portfolio struct {
 
 func (x *Portfolio) Reset() {
 	*x = Portfolio{}
-	mi := &file_ambush_memberships_v1_memberships_proto_msgTypes[4]
+	mi := &file_ambush_memberships_v1_memberships_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -244,7 +468,7 @@ func (x *Portfolio) String() string {
 func (*Portfolio) ProtoMessage() {}
 
 func (x *Portfolio) ProtoReflect() protoreflect.Message {
-	mi := &file_ambush_memberships_v1_memberships_proto_msgTypes[4]
+	mi := &file_ambush_memberships_v1_memberships_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -257,7 +481,7 @@ func (x *Portfolio) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Portfolio.ProtoReflect.Descriptor instead.
 func (*Portfolio) Descriptor() ([]byte, []int) {
-	return file_ambush_memberships_v1_memberships_proto_rawDescGZIP(), []int{4}
+	return file_ambush_memberships_v1_memberships_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *Portfolio) GetMembershipId() string {
@@ -333,7 +557,22 @@ const file_ambush_memberships_v1_memberships_proto_rawDesc = "" +
 	"\arole_id\x18\x02 \x01(\tR\x06roleId\x12\x17\n" +
 	"\auser_id\x18\x03 \x01(\tR\x06userId\"?\n" +
 	"\x18CreateMembershipResponse\x12#\n" +
-	"\rmembership_id\x18\x01 \x01(\tR\fmembershipId\"4\n" +
+	"\rmembership_id\x18\x01 \x01(\tR\fmembershipId\"\x94\x01\n" +
+	"\x1bChangeMembershipRoleRequest\x12\x15\n" +
+	"\x06org_id\x18\x01 \x01(\tR\x05orgId\x12#\n" +
+	"\rmembership_id\x18\x02 \x01(\tR\fmembershipId\x12\x17\n" +
+	"\arole_id\x18\x03 \x01(\tR\x06roleId\x12\x17\n" +
+	"\x04term\x18\x04 \x01(\tH\x00R\x04term\x88\x01\x01B\a\n" +
+	"\x05_term\"s\n" +
+	"\x1cChangeMembershipRoleResponse\x12.\n" +
+	"\x13ended_membership_id\x18\x01 \x01(\tR\x11endedMembershipId\x12#\n" +
+	"\rmembership_id\x18\x02 \x01(\tR\fmembershipId\"V\n" +
+	"\x18ArchiveMembershipRequest\x12\x15\n" +
+	"\x06org_id\x18\x01 \x01(\tR\x05orgId\x12#\n" +
+	"\rmembership_id\x18\x02 \x01(\tR\fmembershipId\"w\n" +
+	"\x19ArchiveMembershipResponse\x12#\n" +
+	"\rmembership_id\x18\x01 \x01(\tR\fmembershipId\x125\n" +
+	"\bended_at\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\aendedAt\"4\n" +
 	"\x19ListUserPortfoliosRequest\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\tR\x06userId\"^\n" +
 	"\x1aListUserPortfoliosResponse\x12@\n" +
@@ -349,9 +588,11 @@ const file_ambush_memberships_v1_memberships_proto_rawDesc = "" +
 	"\tteam_name\x18\x06 \x01(\tR\bteamName\x12\x15\n" +
 	"\x06org_id\x18\a \x01(\tR\x05orgId\x12\x19\n" +
 	"\borg_name\x18\b \x01(\tR\aorgName\x12\x19\n" +
-	"\borg_slug\x18\t \x01(\tR\aorgSlug2\x83\x02\n" +
+	"\borg_slug\x18\t \x01(\tR\aorgSlug2\xfc\x03\n" +
 	"\x11MembershipService\x12s\n" +
-	"\x10CreateMembership\x12..ambush.memberships.v1.CreateMembershipRequest\x1a/.ambush.memberships.v1.CreateMembershipResponse\x12y\n" +
+	"\x10CreateMembership\x12..ambush.memberships.v1.CreateMembershipRequest\x1a/.ambush.memberships.v1.CreateMembershipResponse\x12\x7f\n" +
+	"\x14ChangeMembershipRole\x122.ambush.memberships.v1.ChangeMembershipRoleRequest\x1a3.ambush.memberships.v1.ChangeMembershipRoleResponse\x12v\n" +
+	"\x11ArchiveMembership\x12/.ambush.memberships.v1.ArchiveMembershipRequest\x1a0.ambush.memberships.v1.ArchiveMembershipResponse\x12y\n" +
 	"\x12ListUserPortfolios\x120.ambush.memberships.v1.ListUserPortfoliosRequest\x1a1.ambush.memberships.v1.ListUserPortfoliosResponseB\xd4\x01\n" +
 	"\x19com.ambush.memberships.v1B\x10MembershipsProtoP\x01Z/backend/gen/ambush/memberships/v1;membershipsv1\xa2\x02\x03AMX\xaa\x02\x15Ambush.Memberships.V1\xca\x02\x15Ambush\\Memberships\\V1\xe2\x02!Ambush\\Memberships\\V1\\GPBMetadata\xea\x02\x17Ambush::Memberships::V1b\x06proto3"
 
@@ -367,27 +608,36 @@ func file_ambush_memberships_v1_memberships_proto_rawDescGZIP() []byte {
 	return file_ambush_memberships_v1_memberships_proto_rawDescData
 }
 
-var file_ambush_memberships_v1_memberships_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
+var file_ambush_memberships_v1_memberships_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
 var file_ambush_memberships_v1_memberships_proto_goTypes = []any{
-	(*CreateMembershipRequest)(nil),    // 0: ambush.memberships.v1.CreateMembershipRequest
-	(*CreateMembershipResponse)(nil),   // 1: ambush.memberships.v1.CreateMembershipResponse
-	(*ListUserPortfoliosRequest)(nil),  // 2: ambush.memberships.v1.ListUserPortfoliosRequest
-	(*ListUserPortfoliosResponse)(nil), // 3: ambush.memberships.v1.ListUserPortfoliosResponse
-	(*Portfolio)(nil),                  // 4: ambush.memberships.v1.Portfolio
-	(*timestamppb.Timestamp)(nil),      // 5: google.protobuf.Timestamp
+	(*CreateMembershipRequest)(nil),      // 0: ambush.memberships.v1.CreateMembershipRequest
+	(*CreateMembershipResponse)(nil),     // 1: ambush.memberships.v1.CreateMembershipResponse
+	(*ChangeMembershipRoleRequest)(nil),  // 2: ambush.memberships.v1.ChangeMembershipRoleRequest
+	(*ChangeMembershipRoleResponse)(nil), // 3: ambush.memberships.v1.ChangeMembershipRoleResponse
+	(*ArchiveMembershipRequest)(nil),     // 4: ambush.memberships.v1.ArchiveMembershipRequest
+	(*ArchiveMembershipResponse)(nil),    // 5: ambush.memberships.v1.ArchiveMembershipResponse
+	(*ListUserPortfoliosRequest)(nil),    // 6: ambush.memberships.v1.ListUserPortfoliosRequest
+	(*ListUserPortfoliosResponse)(nil),   // 7: ambush.memberships.v1.ListUserPortfoliosResponse
+	(*Portfolio)(nil),                    // 8: ambush.memberships.v1.Portfolio
+	(*timestamppb.Timestamp)(nil),        // 9: google.protobuf.Timestamp
 }
 var file_ambush_memberships_v1_memberships_proto_depIdxs = []int32{
-	4, // 0: ambush.memberships.v1.ListUserPortfoliosResponse.portfolios:type_name -> ambush.memberships.v1.Portfolio
-	5, // 1: ambush.memberships.v1.Portfolio.joined_at:type_name -> google.protobuf.Timestamp
-	0, // 2: ambush.memberships.v1.MembershipService.CreateMembership:input_type -> ambush.memberships.v1.CreateMembershipRequest
-	2, // 3: ambush.memberships.v1.MembershipService.ListUserPortfolios:input_type -> ambush.memberships.v1.ListUserPortfoliosRequest
-	1, // 4: ambush.memberships.v1.MembershipService.CreateMembership:output_type -> ambush.memberships.v1.CreateMembershipResponse
-	3, // 5: ambush.memberships.v1.MembershipService.ListUserPortfolios:output_type -> ambush.memberships.v1.ListUserPortfoliosResponse
-	4, // [4:6] is the sub-list for method output_type
-	2, // [2:4] is the sub-list for method input_type
-	2, // [2:2] is the sub-list for extension type_name
-	2, // [2:2] is the sub-list for extension extendee
-	0, // [0:2] is the sub-list for field type_name
+	9, // 0: ambush.memberships.v1.ArchiveMembershipResponse.ended_at:type_name -> google.protobuf.Timestamp
+	8, // 1: ambush.memberships.v1.ListUserPortfoliosResponse.portfolios:type_name -> ambush.memberships.v1.Portfolio
+	9, // 2: ambush.memberships.v1.Portfolio.joined_at:type_name -> google.protobuf.Timestamp
+	0, // 3: ambush.memberships.v1.MembershipService.CreateMembership:input_type -> ambush.memberships.v1.CreateMembershipRequest
+	2, // 4: ambush.memberships.v1.MembershipService.ChangeMembershipRole:input_type -> ambush.memberships.v1.ChangeMembershipRoleRequest
+	4, // 5: ambush.memberships.v1.MembershipService.ArchiveMembership:input_type -> ambush.memberships.v1.ArchiveMembershipRequest
+	6, // 6: ambush.memberships.v1.MembershipService.ListUserPortfolios:input_type -> ambush.memberships.v1.ListUserPortfoliosRequest
+	1, // 7: ambush.memberships.v1.MembershipService.CreateMembership:output_type -> ambush.memberships.v1.CreateMembershipResponse
+	3, // 8: ambush.memberships.v1.MembershipService.ChangeMembershipRole:output_type -> ambush.memberships.v1.ChangeMembershipRoleResponse
+	5, // 9: ambush.memberships.v1.MembershipService.ArchiveMembership:output_type -> ambush.memberships.v1.ArchiveMembershipResponse
+	7, // 10: ambush.memberships.v1.MembershipService.ListUserPortfolios:output_type -> ambush.memberships.v1.ListUserPortfoliosResponse
+	7, // [7:11] is the sub-list for method output_type
+	3, // [3:7] is the sub-list for method input_type
+	3, // [3:3] is the sub-list for extension type_name
+	3, // [3:3] is the sub-list for extension extendee
+	0, // [0:3] is the sub-list for field type_name
 }
 
 func init() { file_ambush_memberships_v1_memberships_proto_init() }
@@ -395,13 +645,14 @@ func file_ambush_memberships_v1_memberships_proto_init() {
 	if File_ambush_memberships_v1_memberships_proto != nil {
 		return
 	}
+	file_ambush_memberships_v1_memberships_proto_msgTypes[2].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_ambush_memberships_v1_memberships_proto_rawDesc), len(file_ambush_memberships_v1_memberships_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   5,
+			NumMessages:   9,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

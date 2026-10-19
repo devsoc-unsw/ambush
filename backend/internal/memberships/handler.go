@@ -201,7 +201,10 @@ func (h *Handler) archiveMembership(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	m, err := h.svc.ArchiveMembership(r.Context(), orgID, membershipID)
+	m, err := h.svc.ArchiveMembership(r.Context(), ArchiveInput{
+		OrgID:        orgID,
+		MembershipID: membershipID,
+	})
 	if errors.Is(err, ErrMembershipNotFound) {
 		httpx.WriteError(w, http.StatusNotFound, "membership not found")
 		return

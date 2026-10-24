@@ -206,8 +206,42 @@ func (q *Queries) IsRootTeamRole(ctx context.Context, arg IsRootTeamRoleParams) 
 	return is_root, err
 }
 
-const listUserPortfolios = `-- name: ListUserPortfolios :many
+const listCurrentMembershipsByOrg = `-- name: ListCurrentMembershipsByOrg :many
+SELECT m.id, m.role_id, m.user_id, m.created_at, m.ended_at, m.term FROM memberships m
+JOIN roles r ON r.id = m.role_id AND r.archived_at IS NULL
+JOIN teams t ON r.team_id = t.id AND t.archived_at IS NULL
+WHERE r.org_id = $1 AND m.ended_at IS NULL
+ORDER BY m.id
+`
 
+func (q *Queries) ListCurrentMembershipsByOrg(ctx context.Context, orgID uuid.UUID) ([]Membership, error) {
+	rows, err := q.db.Query(ctx, listCurrentMembershipsByOrg, orgID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Membership
+	for rows.Next() {
+		var i Membership
+		if err := rows.Scan(
+			&i.ID,
+			&i.RoleID,
+			&i.UserID,
+			&i.CreatedAt,
+			&i.EndedAt,
+			&i.Term,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listUserPortfolios = `-- name: ListUserPortfolios :many
 
 SELECT
     m.id                AS membership_id,
@@ -239,7 +273,6 @@ type ListUserPortfoliosRow struct {
 	OrgSlug      string
 }
 
-// TODO: ListMembershipsByOrg :many
 // TODO: ListMembershipsByRole :many
 // "given a person, which portfolios are they part of?"
 func (q *Queries) ListUserPortfolios(ctx context.Context, userID uuid.UUID) ([]ListUserPortfoliosRow, error) {

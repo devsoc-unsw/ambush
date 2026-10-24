@@ -20,7 +20,10 @@ RETURNING *;
 SELECT * FROM teams
 WHERE id = $1;
 
--- TODO: ListTeamsByOrg :many
+-- name: ListTeamsByOrg :many
+SELECT * FROM teams
+WHERE org_id = $1 AND archived_at IS NULL
+ORDER BY id;
 
 -- TODO: ListTeamSubtree :many
 

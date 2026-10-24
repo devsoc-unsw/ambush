@@ -95,8 +95,42 @@ func (q *Queries) GetTeam(ctx context.Context, id uuid.UUID) (Team, error) {
 	return i, err
 }
 
-const setTeamLeader = `-- name: SetTeamLeader :one
+const listTeamsByOrg = `-- name: ListTeamsByOrg :many
+SELECT id, org_id, parent_id, leader_role_id, name, created_at, updated_at, archived_at FROM teams
+WHERE org_id = $1 AND archived_at IS NULL
+ORDER BY id
+`
 
+func (q *Queries) ListTeamsByOrg(ctx context.Context, orgID uuid.UUID) ([]Team, error) {
+	rows, err := q.db.Query(ctx, listTeamsByOrg, orgID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Team
+	for rows.Next() {
+		var i Team
+		if err := rows.Scan(
+			&i.ID,
+			&i.OrgID,
+			&i.ParentID,
+			&i.LeaderRoleID,
+			&i.Name,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.ArchivedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const setTeamLeader = `-- name: SetTeamLeader :one
 
 UPDATE teams t
 SET leader_role_id = $1,
@@ -122,7 +156,6 @@ type SetTeamLeaderParams struct {
 	OrgID        uuid.UUID
 }
 
-// TODO: ListTeamsByOrg :many
 // TODO: ListTeamSubtree :many
 // sets or clears (NULL) the role that leads a team. the role can be from any
 // team in the same org, but not archived

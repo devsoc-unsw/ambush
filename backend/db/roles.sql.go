@@ -45,11 +45,50 @@ func (q *Queries) CreateRole(ctx context.Context, arg CreateRoleParams) (Role, e
 	return i, err
 }
 
+const listRolesByOrg = `-- name: ListRolesByOrg :many
+
+
+
+
+SELECT r.id, r.org_id, r.team_id, r.name, r.created_at, r.updated_at, r.archived_at FROM roles r
+JOIN teams t ON t.id = r.team_id AND t.archived_at IS NULL
+WHERE r.org_id = $1 AND r.archived_at IS NULL
+ORDER BY r.id
+`
+
+// TODO: GetRole :one
+// TODO: ListRolesByTeam :many
+// TODO: UpdateRole :one
+// TODO: ArchiveRole :one
+func (q *Queries) ListRolesByOrg(ctx context.Context, orgID uuid.UUID) ([]Role, error) {
+	rows, err := q.db.Query(ctx, listRolesByOrg, orgID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Role
+	for rows.Next() {
+		var i Role
+		if err := rows.Scan(
+			&i.ID,
+			&i.OrgID,
+			&i.TeamID,
+			&i.Name,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.ArchivedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const lockActiveRoleInOrg = `-- name: LockActiveRoleInOrg :one
-
-
-
-
 SELECT r.id FROM roles r
 JOIN teams t ON t.id = r.team_id AND t.archived_at IS NULL
 JOIN orgs o ON o.id = r.org_id AND o.archived_at IS NULL
@@ -64,10 +103,6 @@ type LockActiveRoleInOrgParams struct {
 	OrgID  uuid.UUID
 }
 
-// TODO: GetRole :one
-// TODO: ListRolesByTeam :many
-// TODO: UpdateRole :one
-// TODO: ArchiveRole :one
 // locks the role row so concurrent handovers of the same role run one at a
 // time. NO KEY UPDATE still lets memberships FK checks through
 func (q *Queries) LockActiveRoleInOrg(ctx context.Context, arg LockActiveRoleInOrgParams) (uuid.UUID, error) {

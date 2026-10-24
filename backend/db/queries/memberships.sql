@@ -40,7 +40,13 @@ JOIN orgs o ON o.id = r.org_id AND o.archived_at IS NULL
 ON CONFLICT (role_id, user_id) WHERE ended_at IS NULL DO NOTHING
 RETURNING *;
 
--- TODO: ListMembershipsByOrg :many
+-- name: ListCurrentMembershipsByOrg :many
+SELECT m.* FROM memberships m
+JOIN roles r ON r.id = m.role_id AND r.archived_at IS NULL
+JOIN teams t ON r.team_id = t.id AND t.archived_at IS NULL
+WHERE r.org_id = $1 AND m.ended_at IS NULL
+ORDER BY m.id;
+
 
 -- TODO: ListMembershipsByRole :many
 

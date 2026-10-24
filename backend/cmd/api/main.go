@@ -50,11 +50,12 @@ func run() error {
 
 	// shared by the HTTP and gRPC servers
 	memSvc := memberships.NewService(pool)
+	orgSvc := orgs.NewService(pool)
 
 	// HTTP: 8080
 	srv := &http.Server{
 		Addr:              ":8080",
-		Handler:           newMux(pool, memSvc),
+		Handler:           newMux(pool, orgSvc, memSvc),
 		ReadHeaderTimeout: 5 * time.Second,
 		WriteTimeout:      10 * time.Second,
 		IdleTimeout:       60 * time.Second,
@@ -76,6 +77,7 @@ func run() error {
 	}
 	grpcSrv := grpc.NewServer()
 	memberships.NewGRPCServer(memSvc).Register(grpcSrv)
+	orgs.NewGRPCServer(orgSvc).Register(grpcSrv)
 	reflection.Register(grpcSrv)
 	go func() {
 		log.Println("grpc listening on :8067")
@@ -97,14 +99,16 @@ func run() error {
 	return srv.Shutdown(shutdownCtx)
 }
 
-func newMux(pool *pgxpool.Pool, memSvc *memberships.Service) *http.ServeMux {
+func newMux(
+	pool *pgxpool.Pool, orgSvc *orgs.Service, memSvc *memberships.Service,
+) *http.ServeMux {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /healthz",
 		func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusOK)
 		})
 
-	orgs.NewHandler(orgs.NewService(pool)).Routes(mux)
+	orgs.NewHandler(orgSvc).Routes(mux)
 	teams.NewHandler(teams.NewService(pool)).Routes(mux)
 	roles.NewHandler(roles.NewService(pool)).Routes(mux)
 	memberships.NewHandler(memSvc).Routes(mux)

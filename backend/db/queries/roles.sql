@@ -18,6 +18,13 @@ RETURNING *;
 
 -- TODO: ArchiveRole :one
 
+-- name: ListRolesByOrg :many
+SELECT r.* FROM roles r
+JOIN teams t ON t.id = r.team_id AND t.archived_at IS NULL
+WHERE r.org_id = $1 AND r.archived_at IS NULL
+ORDER BY r.id;
+
+
 -- locks the role row so concurrent handovers of the same role run one at a
 -- time. NO KEY UPDATE still lets memberships FK checks through
 -- name: LockActiveRoleInOrg :one

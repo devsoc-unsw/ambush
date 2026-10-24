@@ -144,3 +144,110 @@ func (s *Service) ArchiveOrg(ctx context.Context, id uuid.UUID) (Org, error) {
 
 	return toOrg(org), nil
 }
+
+// the structure snapshot is what client apps (chaos, warchest) load into
+// their own spicedb. it only has active teams and roles and current
+// memberships
+
+type OrgStructure struct {
+	Org         Org
+	Teams       []TeamStructure
+	Roles       []RoleStructure
+	Memberships []MembershipStructure
+}
+
+type TeamStructure struct {
+	ID           uuid.UUID
+	Name         string
+	ParentID     *uuid.UUID // nil = the org's root (exec) team
+	LeaderRoleID *uuid.UUID // nil = no leader set
+}
+
+type RoleStructure struct {
+	ID     uuid.UUID
+	TeamID uuid.UUID
+	Name   string
+}
+
+type MembershipStructure struct {
+	ID     uuid.UUID
+	RoleID uuid.UUID
+	UserID uuid.UUID
+}
+
+func (s *Service) GetOrgStructure(
+	ctx context.Context, id uuid.UUID,
+) (OrgStructure, error) {
+	tx, err := s.pool.BeginTx(ctx, pgx.TxOptions{
+		IsoLevel:   pgx.RepeatableRead,
+		AccessMode: pgx.ReadOnly,
+	})
+	if err != nil {
+		return OrgStructure{}, fmt.Errorf("begin tx: %w", err)
+	}
+	defer tx.Rollback(ctx)
+
+	q := s.q.WithTx(tx)
+
+	org, err := q.GetOrg(ctx, id)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return OrgStructure{}, ErrOrgNotFound
+	}
+	if err != nil {
+		return OrgStructure{}, fmt.Errorf("get org: %w", err)
+	}
+
+	teams, err := q.ListTeamsByOrg(ctx, id)
+	if err != nil {
+		return OrgStructure{}, fmt.Errorf("list teams: %w", err)
+	}
+	roles, err := q.ListRolesByOrg(ctx, id)
+	if err != nil {
+		return OrgStructure{}, fmt.Errorf("list roles: %w", err)
+	}
+	memberships, err := q.ListCurrentMembershipsByOrg(ctx, id)
+	if err != nil {
+		return OrgStructure{}, fmt.Errorf("list memberships: %w", err)
+	}
+
+	if err = tx.Commit(ctx); err != nil {
+		return OrgStructure{}, fmt.Errorf("commit: %w", err)
+	}
+
+	return OrgStructure{
+		Org:         toOrg(org),
+		Teams:       toTeamStructures(teams),
+		Roles:       toRoleStructures(roles),
+		Memberships: toMembershipStructures(memberships),
+	}, nil
+}
+
+func toTeamStructures(rows []db.Team) []TeamStructure {
+	out := make([]TeamStructure, len(rows))
+	for i, t := range rows {
+		out[i] = TeamStructure{ID: t.ID, Name: t.Name}
+		if t.ParentID.Valid {
+			out[i].ParentID = &t.ParentID.UUID
+		}
+		if t.LeaderRoleID.Valid {
+			out[i].LeaderRoleID = &t.LeaderRoleID.UUID
+		}
+	}
+	return out
+}
+
+func toRoleStructures(rows []db.Role) []RoleStructure {
+	out := make([]RoleStructure, len(rows))
+	for i, r := range rows {
+		out[i] = RoleStructure{ID: r.ID, TeamID: r.TeamID, Name: r.Name}
+	}
+	return out
+}
+
+func toMembershipStructures(rows []db.Membership) []MembershipStructure {
+	out := make([]MembershipStructure, len(rows))
+	for i, m := range rows {
+		out[i] = MembershipStructure{ID: m.ID, RoleID: m.RoleID, UserID: m.UserID}
+	}
+	return out
+}

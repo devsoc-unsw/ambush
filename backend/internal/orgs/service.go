@@ -14,6 +14,9 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
+// used when a new org doesn't name its root team
+const defaultRootTeamName = "Exec"
+
 var (
 	ErrOrgNotFound = errors.New("org not found")
 	ErrSlugTaken   = errors.New("slug already taken")
@@ -31,7 +34,7 @@ func NewService(pool *pgxpool.Pool) *Service {
 type NewOrg struct {
 	Name         string
 	Slug         string
-	RootTeamName string
+	RootTeamName string // optional, use "" if none
 }
 
 type CreatedOrg struct {
@@ -42,6 +45,10 @@ type CreatedOrg struct {
 // CreateOrg creates an org and its root team together, since an org without a
 // root team breaks the team tree.
 func (s *Service) CreateOrg(ctx context.Context, in NewOrg) (CreatedOrg, error) {
+	if in.RootTeamName == "" {
+		in.RootTeamName = defaultRootTeamName
+	}
+
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		return CreatedOrg{}, fmt.Errorf("begin tx: %w", err)

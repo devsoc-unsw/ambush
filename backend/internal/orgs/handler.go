@@ -11,9 +11,6 @@ import (
 	"github.com/google/uuid"
 )
 
-// used when a new org doesn't name its root team
-const defaultRootTeamName = "Exec"
-
 type Handler struct {
 	svc *Service
 }
@@ -41,9 +38,6 @@ func (h *Handler) createOrg(w http.ResponseWriter, r *http.Request) {
 	if body.Name == "" || body.Slug == "" {
 		httpx.WriteError(w, http.StatusBadRequest, "name and slug required")
 		return
-	}
-	if body.RootTeamName == "" {
-		body.RootTeamName = defaultRootTeamName
 	}
 
 	created, err := h.svc.CreateOrg(r.Context(), NewOrg{

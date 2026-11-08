@@ -1,0 +1,26 @@
+// Kratos-given uuid
+definition user {}
+
+definition ambush/org {
+	relation exec_team: ambush/team
+
+	permission exec = exec_team->member
+}
+
+definition ambush/team {
+	relation org: ambush/org
+	relation parent: ambush/team
+	relation lead: ambush/role#holder
+	relation role: ambush/role
+
+	permission member = role->current_holder
+	permission manage = lead + parent->manage // for chaos to ask "can this guy add this guy to subcom?"
+}
+
+definition ambush/role {
+	relation holder: user
+	relation team: ambush/team
+
+	permission current_holder = holder
+	permission manage_holder = team->manage
+}

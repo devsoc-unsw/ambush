@@ -1,0 +1,44 @@
+syntax = "proto3";
+
+package ambush.orgs.v1;
+
+message Org {
+  string id = 1;
+  string name = 2;
+  string slug = 3;
+  bool archived = 4;
+}
+
+message Team {
+  string id = 1;
+  string name = 2;
+  optional string parent_id = 3;
+  optional string leader_role_id = 4;
+}
+
+message Role {
+  string id = 1;
+  string team_id = 2;
+  string name = 3;
+}
+
+message Membership {
+  string id = 1;
+  string role_id = 2;
+  string user_id = 3;
+}
+
+message GetOrgStructureRequest {
+  string org_id = 1;
+}
+
+message GetOrgStructureResponse {
+  Org org = 1;
+  repeated Team teams = 2;
+  repeated Role roles = 3;
+  repeated Membership memberships = 4;
+}
+
+service OrgStructureService {
+  rpc GetOrgStructure(GetOrgStructureRequest) returns (GetOrgStructureResponse);
+}

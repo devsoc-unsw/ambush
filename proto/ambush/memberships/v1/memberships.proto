@@ -1,0 +1,71 @@
+syntax = "proto3";
+
+package ambush.memberships.v1;
+
+import "google/protobuf/timestamp.proto";
+
+// all ids are uuid strings. memberships in an org's root (exec) team can't be
+// created, changed or archived through this service
+service MembershipService {
+  rpc CreateMembership(CreateMembershipRequest) returns (CreateMembershipResponse);
+  // moves a member to a different role, e.g. Subcom to Director. the old
+  // membership is ended and a new one started, so the response has a new id
+  rpc ChangeMembershipRole(ChangeMembershipRoleRequest) returns (ChangeMembershipRoleResponse);
+  // ends a membership. archiving one that has already ended is a no-op
+  rpc ArchiveMembership(ArchiveMembershipRequest) returns (ArchiveMembershipResponse);
+  // "given a person, which portfolios are they part of?"
+  rpc ListUserPortfolios(ListUserPortfoliosRequest) returns (ListUserPortfoliosResponse);
+}
+
+message CreateMembershipRequest {
+  string org_id = 1;
+  string role_id = 2;
+  string user_id = 3; // provided by ory
+}
+
+message CreateMembershipResponse {
+  string membership_id = 1;
+}
+
+message ChangeMembershipRoleRequest {
+  string org_id = 1;
+  string membership_id = 2;
+  string role_id = 3; // the new role
+  optional string term = 4; // left out keeps the old membership's term
+}
+
+message ChangeMembershipRoleResponse {
+  string ended_membership_id = 1;
+  string membership_id = 2; // the new membership
+}
+
+message ArchiveMembershipRequest {
+  string org_id = 1;
+  string membership_id = 2;
+}
+
+message ArchiveMembershipResponse {
+  string membership_id = 1;
+  google.protobuf.Timestamp ended_at = 2;
+}
+
+message ListUserPortfoliosRequest {
+  string user_id = 1; // provided by ory
+}
+
+message ListUserPortfoliosResponse {
+  repeated Portfolio portfolios = 1;
+}
+
+// one role a user currently holds, with its team and org
+message Portfolio {
+  string membership_id = 1;
+  google.protobuf.Timestamp joined_at = 2;
+  string role_id = 3;
+  string role_name = 4;
+  string team_id = 5;
+  string team_name = 6;
+  string org_id = 7;
+  string org_name = 8;
+  string org_slug = 9;
+}

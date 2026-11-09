@@ -13,12 +13,20 @@ services:
     ports:
       # expose ports (host <-> container)
       - "3000:3000" # frontend (vite)
-      - "8080:8080" # backend (go)
+      - "8080:8080" # backend http (go)
+      - "8067:8067" # backend grpc (go)
     volumes:
       - ../:/root/ambush
     environment:
       - NODE_ENV=development
       - DATABASE_URL=postgres://postgres:password@ambush-metadata-postgres:5432/meta_ambush?sslmode=disable
+      # the backend reads these to reach spicedb
+      - SPICEDB_ENDPOINT=spicedb-dev:50051
+      - SPICEDB_PRESHARED_KEY=secret-dev-key
+      # zed reads these, so `zed schema read` works with no context set up
+      - ZED_ENDPOINT=spicedb-dev:50051
+      - ZED_TOKEN=secret-dev-key
+      - ZED_INSECURE=true
     networks:
       - devsoc-network
     depends_on:
@@ -32,7 +40,8 @@ services:
       - seccomp:unconfined
 
   spicedb-dev:
-    image: authzed/spicedb:latest-debug
+    # keep this and `migrate` on the same version
+    image: authzed/spicedb:v1.57.0-debug
     command: serve
     restart: always
     environment:
@@ -48,7 +57,7 @@ services:
         condition: service_completed_successfully
 
   migrate:
-    image: authzed/spicedb
+    image: authzed/spicedb:v1.57.0
     command: datastore migrate head
     environment:
       - SPICEDB_DATASTORE_ENGINE=postgres

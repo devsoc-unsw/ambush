@@ -24,3 +24,9 @@ definition ambush/role {
 	permission current_holder = holder
 	permission manage_holder = team->manage
 }
+
+definition ambush/frontend {
+    relation admin_org: ambush/org  // devsoc is the admin org
+
+    permission admin = admin_org->exec
+}

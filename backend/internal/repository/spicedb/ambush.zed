@@ -13,8 +13,8 @@ definition ambush/team {
 	relation lead: ambush/role#holder
 	relation role: ambush/role
 
-	permission member = role->current_holder
-	permission manage = lead + parent->manage // for chaos to ask "can this guy add this guy to subcom?"
+	permission member = role->current_holder	// is role->current_holder in this team
+	permission manage = lead + parent->manage	// is lead in charge of this team
 }
 
 definition ambush/role {

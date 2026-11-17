@@ -22,6 +22,16 @@ selfservice:
   methods: # the methods which we can use to login
     password: # enables password to be used to login
       enabled: true
+    # TODO: Finish setting up OIDC
+    oidc:
+      enabled: true
+      config:
+        providers:
+          - id: google
+            provider: google
+            client_id: DEV_GOOGLE_CLIENT_ID 
+            client_secret: DEV_GOOGLE_CLIENT_SECRET
+            mapper_url: file:///etc/config/kratos/oidc.google.jsonnet
 
     # webauthn: # is for yubikey/physical keys, stubbing out for now
     #   enabled: true
@@ -45,10 +55,8 @@ selfservice:
     #       origins:
     #         - http://localhost:4467
 
-    # TODO: Finish setting up OIDC
-    # oidc:
+    # code: # passwordless otp, stubbing out for now
     #   enabled: true
-    #   config:
 
   flows:
     error:

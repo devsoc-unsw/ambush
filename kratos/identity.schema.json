@@ -30,18 +30,11 @@
             }
           }
         },
-        "name": {
-          "type": "object",
-          "properties": {
-            "first": {
-              "title": "First Name",
-              "type": "string"
-            },
-            "last": {
-              "title": "Last Name",
-              "type": "string"
-            }
-          }
+        "full_name": {
+          "type": "string"
+        }, 
+        "preferred_name": {
+          "type": "string"
         }
       },
       "required": ["email"],

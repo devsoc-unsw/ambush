@@ -35,6 +35,9 @@ RUN go install golang.org/x/tools/gopls@latest \
     && go install golang.org/x/tools/cmd/goimports@latest \
     && go install github.com/sqlc-dev/sqlc/cmd/sqlc@latest \
     && go install github.com/pressly/goose/v3/cmd/goose@latest \
+    && go install github.com/bufbuild/buf/cmd/buf@latest \
+    && go install github.com/fullstorydev/grpcurl/cmd/grpcurl@latest \
+    && go install github.com/authzed/zed/cmd/zed@v1.2.1 \
     && curl -sSfL https://golangci-lint.run/install.sh | sh -s -- -b /root/go/bin
 
 # set-up bashrc to have basic colours

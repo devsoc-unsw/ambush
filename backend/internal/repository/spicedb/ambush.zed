@@ -1,0 +1,37 @@
+// Kratos-given uuid
+definition user {}
+
+definition ambush/org {
+    relation exec_team: ambush/team
+    relation archived: user:*               // archiving writes
+
+    permission exec = exec_team->member
+    permission is_archived = archived
+}
+
+definition ambush/team {
+    relation org: ambush/org
+    relation parent: ambush/team
+    relation lead: ambush/role#current_holder
+    relation role: ambush/role
+    relation archived: user:*
+
+    permission member = role->current_holder	                 // is role->current_holder in this team
+    permission manage = (lead + parent->manage) - is_archived    // is lead in charge of this team
+    permission is_archived = archived + org->is_archived + parent->is_archived
+}
+
+definition ambush/role {
+    relation holder: user 
+    relation team: ambush/team
+    relation archived: user:*
+
+    permission current_holder = (holder - archived) - team->is_archived
+    permission manage_holder = team->manage - archived
+}
+
+definition ambush/frontend {
+    relation admin_org: ambush/org  // devsoc is the admin org
+
+    permission admin = admin_org->exec
+}

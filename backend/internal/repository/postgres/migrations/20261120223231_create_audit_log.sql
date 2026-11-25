@@ -3,7 +3,7 @@ CREATE TYPE audit_entity AS ENUM ('org', 'team', 'role', 'membership');
 CREATE TYPE audit_action AS ENUM ('create', 'update', 'delete');
 
 CREATE TABLE audit_log (
-    id             BIGSERIAL PRIMARY KEY,
+    id             UUID PRIMARY KEY,
     change_set_id  UUID NOT NULL,          -- groups one user action into one row-set
     org_id         UUID NOT NULL,
     entity_type    audit_entity NOT NULL,

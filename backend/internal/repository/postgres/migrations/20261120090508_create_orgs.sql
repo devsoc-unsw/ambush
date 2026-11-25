@@ -1,7 +1,7 @@
 -- +goose Up
 
 CREATE TABLE orgs (
-    id          UUID PRIMARY KEY DEFAULT uuidv7(),
+    id          UUID PRIMARY KEY,
     name        TEXT NOT NULL,
     slug        TEXT NOT NULL UNIQUE,
     created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),

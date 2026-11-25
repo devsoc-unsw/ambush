@@ -8,7 +8,7 @@ CREATE TABLE teams (
     updated_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
     archived_at     TIMESTAMPTZ,
 
-    UNIQUE (org_id, name),
+    UNIQUE (org_id, name)
 );
 
 

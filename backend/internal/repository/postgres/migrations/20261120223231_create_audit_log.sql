@@ -1,6 +1,7 @@
 -- +goose Up
 CREATE TYPE audit_entity AS ENUM ('org', 'team', 'role', 'membership');
 CREATE TYPE audit_action AS ENUM ('create', 'update', 'delete');
+CREATE TYPE actor_type AS ENUM ('user', 'system', 'services');
 
 CREATE TABLE audit_log (
     id             UUID PRIMARY KEY,
@@ -9,23 +10,32 @@ CREATE TABLE audit_log (
     entity_type    audit_entity NOT NULL,
     entity_id      UUID NOT NULL,
     action         audit_action NOT NULL,
-    actor_id       UUID NOT NULL,
+
+    actor_id       UUID,
+    actor_name     TEXT,
+    actor_type     actor_type NOT NULL,
+
     before         JSONB,
     after          JSONB,
-    undoes_id      BIGINT REFERENCES audit_log (id),
+    undoes_id      UUID REFERENCES audit_log (id),
     created_at     TIMESTAMPTZ NOT NULL DEFAULT now(),
 
     CHECK (
         (action = 'create' AND before IS NULL     AND after IS NOT NULL) OR
         (action = 'update' AND before IS NOT NULL AND after IS NOT NULL) OR
         (action = 'delete' AND before IS NOT NULL AND after IS NULL)
+    ),
+
+    CHECK (
+        (actor_type = 'user'  AND actor_id IS NOT NULL AND actor_name IS NULL) OR
+        (actor_type <> 'user' AND actor_id IS NULL     AND actor_name IS NOT NULL)
     )
 );
 
 CREATE INDEX idx_audit_log_org       ON audit_log (org_id, id DESC);
 CREATE INDEX idx_audit_log_entity    ON audit_log (entity_type, entity_id, id DESC);
 CREATE INDEX idx_audit_log_changeset ON audit_log (change_set_id);
-CREATE INDEX idx_audit_log_actor     ON audit_log (actor_id, id DESC);
+CREATE INDEX idx_audit_log_actor     ON audit_log (actor_id, id DESC) WHERE actor_id IS NOT NULL;
 
 -- an entry may be undone at most once. chains (undo-of-undo = redo) still allowed
 CREATE UNIQUE INDEX idx_audit_log_undoes
@@ -48,5 +58,6 @@ CREATE TRIGGER trg_audit_log_append_only
 DROP TRIGGER trg_audit_log_append_only ON audit_log;
 DROP FUNCTION audit_log_is_append_only;
 DROP TABLE audit_log;
+DROP TYPE actor_type;
 DROP TYPE audit_action;
 DROP TYPE audit_entity;

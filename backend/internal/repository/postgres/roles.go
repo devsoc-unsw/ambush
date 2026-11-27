@@ -31,11 +31,32 @@ func (r *RoleRepo) Get(ctx context.Context, id uuid.UUID) (repository.Role, erro
 	if err != nil {
 		return repository.Role{}, fmt.Errorf("get role %s: %w", id, err)
 	}
+	return toRole(row), nil
+}
+
+func (r *RoleRepo) Create(
+	ctx context.Context, id uuid.UUID, name string,
+) (repository.Role, error) {
+	row, err := r.q.CreateRole(ctx, db.CreateRoleParams{ID: id, Name: name})
+	if err != nil {
+		return repository.Role{}, fmt.Errorf("create role: %w", err)
+	}
+	return toRole(row), nil
+}
+
+func (r *RoleRepo) Delete(ctx context.Context, id uuid.UUID) error {
+	if err := r.q.DeleteRole(ctx, id); err != nil {
+		return fmt.Errorf("delete role %s: %w", id, err)
+	}
+	return nil
+}
+
+func toRole(row db.Role) repository.Role {
 	return repository.Role{
 		ID:         row.ID,
 		Name:       row.Name,
 		CreatedAt:  row.CreatedAt,
 		UpdatedAt:  row.UpdatedAt,
 		ArchivedAt: row.ArchivedAt,
-	}, nil
+	}
 }

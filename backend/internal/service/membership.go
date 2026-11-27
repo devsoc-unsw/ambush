@@ -2,23 +2,9 @@ package service
 
 import (
 	"context"
-	"errors"
-
-	"backend/internal/repository"
 
 	"github.com/google/uuid"
 )
-
-var ErrRoleArchived = errors.New("role is archived")
-
-// The service defines the interfaces it needs; the repositories satisfy them.
-type RoleRepository interface {
-	Get(ctx context.Context, id uuid.UUID) (repository.Role, error)
-}
-
-type MembershipRepository interface {
-	AddHolder(ctx context.Context, roleID, userID uuid.UUID) error
-}
 
 type MembershipService struct {
 	roles       RoleRepository

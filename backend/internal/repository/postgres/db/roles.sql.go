@@ -11,6 +11,40 @@ import (
 	"github.com/google/uuid"
 )
 
+const createRole = `-- name: CreateRole :one
+INSERT INTO roles (id, name)
+VALUES ($1, $2)
+RETURNING id, name, created_at, updated_at, archived_at
+`
+
+type CreateRoleParams struct {
+	ID   uuid.UUID
+	Name string
+}
+
+func (q *Queries) CreateRole(ctx context.Context, arg CreateRoleParams) (Role, error) {
+	row := q.db.QueryRow(ctx, createRole, arg.ID, arg.Name)
+	var i Role
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.ArchivedAt,
+	)
+	return i, err
+}
+
+const deleteRole = `-- name: DeleteRole :exec
+DELETE FROM roles
+WHERE id = $1
+`
+
+func (q *Queries) DeleteRole(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.Exec(ctx, deleteRole, id)
+	return err
+}
+
 const getRole = `-- name: GetRole :one
 SELECT id, name, created_at, updated_at, archived_at FROM roles
 WHERE id = $1

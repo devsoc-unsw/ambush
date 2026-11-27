@@ -8,8 +8,6 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 )
 
-// NewClient connects without TLS, which is fine for the dev stack
-// (SPICEDB_ENDPOINT / SPICEDB_PRESHARED_KEY in docker-compose).
 func NewClient(endpoint, presharedKey string) (*authzed.Client, error) {
 	return authzed.NewClient(
 		endpoint,

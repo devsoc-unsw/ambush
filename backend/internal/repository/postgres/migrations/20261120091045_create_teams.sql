@@ -5,7 +5,7 @@ CREATE TABLE teams (
     name            TEXT NOT NULL,
     created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
-    archived_at     TIMESTAMPTZ,
+    archived_at     TIMESTAMPTZ
 );
 
 
